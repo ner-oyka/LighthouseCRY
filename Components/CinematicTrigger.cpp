@@ -1,3 +1,5 @@
+//Deer Solar Games | 2021 | Lighthouse project
+
 #include "StdAfx.h"
 #include "CinematicTrigger.h"
 #include <CryEntitySystem/IEntity.h>

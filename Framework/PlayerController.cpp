@@ -1,3 +1,5 @@
+//Deer Solar Games | 2021 | Lighthouse project
+
 #include "StdAfx.h"
 #include "GamePlugin.h"
 #include "PlayerController.h"
