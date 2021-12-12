@@ -1,14 +1,13 @@
-//Deer Solar Games | 2021 | Lighthouse project
+// Deer Solar Games | 2021 | Lighthouse project
 
-//Camera controller component for game view
-//Third Person Camera mode
-//Cinematic mode: finding main cinemetic camera and replase its pos and rot for smooth animation and more features:
-//LookAt: look at player character
-//ViewControl: rotate view camera as FPS
-//TransformControl: rotate view camera around player character with adjusted rotate limited
-//Default: cinematic mode used full features track view
+// Camera controller component for game view
+// Third Person Camera mode
+// Cinematic mode: finding main cinemetic camera and replase its pos and rot for smooth animation and more features (cinematic mode used full features track view):
+// LookAt: look at player character
+// ViewControl: rotate view camera as FPS --in dev
+// TransformControl: rotate view camera around player character with adjusted rotate limited -- in dev
 
-//Writed by quantbrain
+// Writed by quantbrain
 
 #pragma once
 
@@ -24,21 +23,23 @@ namespace Game
 {
 	enum class ECameraType
 	{
-		Default = 0,
+		Cinematic = 0,
 		LookAt = 1,
 		ViewControl = 2,
-		ThirdPerson = 3
+		ThirdPerson = 3,
+		TransformControl = 4
 	};
 
 	static void ReflectType(Schematyc::CTypeDesc<ECameraType>& desc)
 	{
 		desc.SetGUID("{3622DAA9-FA64-40DF-9308-7B4BC1D107D8}"_cry_guid);
 		desc.SetLabel("Camera Type");
-		desc.SetDefaultValue(ECameraType::Default);
-		desc.AddConstant(ECameraType::Default, "Default", "Default");
+		desc.SetDefaultValue(ECameraType::Cinematic);
+		desc.AddConstant(ECameraType::Cinematic, "Cinematic", "Cinematic");
 		desc.AddConstant(ECameraType::LookAt, "LookAt", "LookAt");
 		desc.AddConstant(ECameraType::ViewControl, "ViewControl", "ViewControl");
 		desc.AddConstant(ECameraType::ThirdPerson, "ThirdPerson", "ThirdPerson");
+		desc.AddConstant(ECameraType::TransformControl, "TransformControl", "TransformControl");
 	}
 }
 
@@ -69,7 +70,7 @@ public:
 		desc.SetDescription("The camera controller component.");
 		desc.SetComponentFlags({ IEntityComponent::EFlags::Singleton });
 
-		desc.AddMember(&CCameraControllerComponent::cameraType, 'type', "CameraType", "Camera Type", "..", Game::ECameraType::Default);
+		desc.AddMember(&CCameraControllerComponent::cameraType, 'type', "CameraType", "Camera Type", "..", Game::ECameraType::Cinematic);
 		desc.AddMember(&CCameraControllerComponent::followMoveCameraSpeed, 'fmcs', "FollowMoveCameraSpeed", "Follow Move Camera Speed", "..", 1.0f);
 		desc.AddMember(&CCameraControllerComponent::followRotateCameraSpeed, 'frcs', "FollowRotateCameraSpeed", "Follow Rotate Camera Speed", "..", 1.0f);
 		desc.AddMember(&CCameraControllerComponent::m_cameraRootName, 'rtne', "CameraRootName", "Camera Root Name", "..", "_root");
@@ -79,6 +80,9 @@ public:
 		desc.AddMember(&CCameraControllerComponent::m_cameraDistanceThirdPerson, 'dsnt', "CameraDistance", "Camera Distance", "..", 3.f);
 		desc.AddMember(&CCameraControllerComponent::m_pitchMin, 'pmax', "PitchMin", "Pitch Min", "..", 15.f);
 		desc.AddMember(&CCameraControllerComponent::m_pitchMax, 'pmin', "PitchMax", "Pitch Max", "..", 85.f);
+
+		desc.AddMember(&CCameraControllerComponent::m_fieldOfViewDefault, 'fovd', "FoVDefault", "FoV Default", "..", 65.f);
+		desc.AddMember(&CCameraControllerComponent::m_fieldOfViewExamine, 'fove', "FoVExamine", "FoV Examine", "..", 45.f);
 	}
 
 private:
@@ -93,7 +97,7 @@ private:
 	bool CollisionDetection(const Vec3& TargetPosition, Vec3& CameraPosition);
 
 protected:
-	Game::ECameraType cameraType = Game::ECameraType::Default;
+	Game::ECameraType cameraType = Game::ECameraType::Cinematic;
 
 private:
 	Cry::DefaultComponents::CCameraComponent* m_pCameraComponent = nullptr;
@@ -101,6 +105,9 @@ private:
 
 	float m_cameraDistanceThirdPerson = 3.f;
 	float m_newCameraDistanceThirdPerson;
+	float m_saveCameraDistanceThirdPerson;
+	float m_rightOffset;
+	float m_newRightOffset;
 
 	Vec3 m_cameraOffsetThirdPerson = Vec3(SCameraOffsetTP::cameraOffset[0], SCameraOffsetTP::cameraOffset[1], SCameraOffsetTP::cameraOffset[2]);
 
@@ -116,7 +123,11 @@ private:
 	Schematyc::Range<0, 89> m_pitchMax = 85.0f;
 
 	Schematyc::Range<0, 32768> m_nearPlane = 0.25f;
-	CryTransform::CClampedAngle<20, 360> m_fieldOfView = 55.0_degrees;
+
+	float m_fieldOfView = 65.0f;
+	float m_fieldOfViewDefault = 65.0f;
+	float m_fieldOfViewExamine = 45.0f;
+	float m_newFieldOfView;
 
 	float followMoveCameraSpeed = 1.0f;
 	float followRotateCameraSpeed = 1.0f;
@@ -147,6 +158,9 @@ private:
 	virtual void OnPitchDeltaXIRight(int activationMode, float value) override;
 
 	virtual void OnMouseWheel(int activationMode, float value) override;
+
+	virtual void OnMouseButtonRight(int activationMode, float value) override;
+	virtual void OnTriggerXIRight(int activationMode, float value) override;
 	//~IInputEvents
 
 private:

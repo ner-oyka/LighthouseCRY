@@ -10,6 +10,7 @@
 #include <CrySchematyc/IObject.h>
 #include <CryCore/StaticInstanceList.h>
 #include "Framework/PlayerController.h"
+#include "Components/Assistant.h"
 
 #include <CryPhysics\physinterface.h>
 #include <CryPhysics/IPhysics.h>
@@ -17,6 +18,7 @@
 #include <CryInput/IHardwareMouse.h>
 
 #include <CryGame/GameUtils.h>
+#include <CryMath/Random.h>
 
 #include "Car.h"
 
@@ -114,6 +116,10 @@ void CAlexPlayer::Initialize()
 
 	m_speed = m_baseSpeed;
 	m_newSpeed = m_speed;
+
+	//Look At
+	CryCreateClassInstanceForInterface(cryiidof<IAnimationOperatorQueue>(), m_lookAtModifier);
+	m_bRandomLook = true;
 }
 
 Cry::Entity::EventFlags CAlexPlayer::GetEventMask() const
@@ -149,7 +155,7 @@ void CAlexPlayer::ProcessEvent(const SEntityEvent& event)
 
 	case Cry::Entity::EEvent::PrePhysicsUpdate:
 	{
-
+		UpdateLookAt();
 	}
 	break;
 
@@ -290,7 +296,7 @@ void CAlexPlayer::SpawnCursorEntity()
 	SEntitySpawnParams spawnParams;
 	// No need for a special class!
 	spawnParams.pClass = gEnv->pEntitySystem->GetClassRegistry()->GetDefaultClass();
-	spawnParams.vPosition = m_pEntity->GetPos();
+	spawnParams.vPosition = Vec3(0,0,9999);
 
 	// Spawn the cursor
 	m_pCursorEntity = gEnv->pEntitySystem->SpawnEntity(spawnParams);
@@ -300,16 +306,17 @@ void CAlexPlayer::SpawnCursorEntity()
 	m_pCursorEntity->LoadGeometry(geometrySlot, "%ENGINE%/EngineAssets/Objects/primitive_sphere.cgf");
 
 	// Scale the cursor down a bit
-	m_pCursorEntity->SetScale(Vec3(0.1f));
+	m_pCursorEntity->SetScale(Vec3(3.0f));
 	m_pCursorEntity->SetViewDistRatio(255);
 
 	// Load the custom cursor material
-	IMaterial* pCursorMaterial = gEnv->p3DEngine->GetMaterialManager()->LoadMaterial("Materials/cursor");
+	IMaterial* pCursorMaterial = gEnv->p3DEngine->GetMaterialManager()->LoadMaterial("Materials/targetCursor");
 	m_pCursorEntity->SetMaterial(pCursorMaterial);
 }
 
 void CAlexPlayer::RemoveCursorEntity()
 {
+	gEnv->pEntitySystem->RemoveEntity(m_pCursorEntity->GetId());
 	m_pCursorEntity = nullptr;
 }
 
@@ -331,10 +338,12 @@ void CAlexPlayer::UpdateCursor()
 	Vec3 vDir = vPos1 - vPos0;
 	vDir.Normalize();
 
+	const CCamera& systemCamera = gEnv->pSystem->GetViewCamera();
+
 	const unsigned int rayFlags = rwi_colltype_any | rwi_ignore_noncolliding | rwi_stop_at_pierceable;
 	ray_hit hit;
 
-	if (gEnv->pPhysicalWorld->RayWorldIntersection(vPos0, vDir * gEnv->p3DEngine->GetMaxViewDistance(), ent_all | ent_rigid | ent_sleeping_rigid | ent_independent | ent_static | ent_areas, rayFlags, &hit, 1, this->GetEntity()->GetPhysicalEntity()))
+	if (gEnv->pPhysicalWorld->RayWorldIntersection(systemCamera.GetPosition(), systemCamera.GetViewdir() * gEnv->p3DEngine->GetMaxViewDistance(), ent_all | ent_rigid | ent_sleeping_rigid | ent_independent | ent_static | ent_areas, rayFlags, &hit, 1, this->GetEntity()->GetPhysicalEntity()))
 	{
 		m_cursorPositionInWorld = hit.pt;
 
@@ -347,6 +356,38 @@ void CAlexPlayer::UpdateCursor()
 	{
 		m_cursorPositionInWorld = ZERO;
 	}
+}
+
+Quat CAlexPlayer::RandomLookAt()
+{
+	if (m_bRandomLook)
+	{
+		if (m_currentGlobalLookTime > 0)
+		{
+			m_currentGlobalLookTime -= gEnv->pTimer->GetFrameTime();
+
+			if (m_currentLocalLookTime > 0)
+			{
+				m_currentLocalLookTime -= gEnv->pTimer->GetFrameTime();
+			}
+			else
+			{
+				// set local target
+				m_currentRandomLookRotation *= Quat::CreateRotationXYZ(Ang3(cry_random(DEG2RAD(-2.0f), DEG2RAD(5.0f)), 0, cry_random(DEG2RAD(-3.0f), DEG2RAD(3.0f))));
+
+				m_currentLocalLookTime = cry_random(m_localLookDuration - 0.5f, m_localLookDuration + 0.5f);
+			}
+		}
+		else
+		{
+			// set global target
+			m_currentRandomLookRotation = Quat::CreateRotationXYZ(Ang3(cry_random(DEG2RAD(-15.0f), DEG2RAD(25.0f)), 0, cry_random(DEG2RAD(-30.0f), DEG2RAD(30.0f))));
+
+			m_currentGlobalLookTime = cry_random(m_globalLookDuration - 1, m_globalLookDuration + 3);
+		}
+	}
+
+	return m_currentRandomLookRotation;
 }
 
 void CAlexPlayer::UpdateAnimation()
@@ -371,47 +412,46 @@ void CAlexPlayer::UpdateAnimation()
 	}
 }
 
-void CAlexPlayer::UpdateMovement()
+void CAlexPlayer::UpdateLookAt()
 {
-	if (m_pCharacterController)
+	if (ICharacterInstance* pCharacterInstance = m_pAnimationComponent->GetCharacter())
 	{
+		ISkeletonPose* pSkeleton = pCharacterInstance->GetISkeletonPose();
+		IDefaultSkeleton& rIDefaultSkeleton = pCharacterInstance->GetIDefaultSkeleton();
+
+		int m_lookTargetBoneId = rIDefaultSkeleton.GetJointIDByName("targetLook");
+
+		QuatT lookTargetPos = pSkeleton->GetAbsJointByID(m_lookTargetBoneId);
+
 		const CCamera& systemCamera = gEnv->pSystem->GetViewCamera();
-		Vec3 movementRequest = (GetMovement(Quat(systemCamera.GetMatrix())) + GetXiMovement(Quat(systemCamera.GetMatrix()))).GetNormalized();
 
-		if (movementRequest.len() == 0.0f)
+
+		Vec3 playerLookPos = Vec3(0,0,1.8);
+
+		Quat cameraRot = Quat::CreateRotationVDir(systemCamera.GetViewdir());
+
+
+		Quat localCamRotate = Quat::CreateRotationVDir(m_pEntity->GetForwardDir()) / cameraRot;
+		float localCamZ = RAD2DEG(localCamRotate.GetRotZ());
+		if (localCamZ <= -125.0f || localCamZ >= 125.0f)
 		{
-			movementRequest = Vec3(0, 0, 0);
-		}
-		else
-		{
-			m_lastMovementRequest = movementRequest;
-		}
-
-
-		if (ICharacterInstance* character = m_pAnimationComponent->GetCharacter())
-		{
-			ISkeletonAnim& skeletonAnim = *character->GetISkeletonAnim();
-
-			QuatT relMove = skeletonAnim.GetRelMovement();
-			Vec3 vel = skeletonAnim.GetCurrentVelocity();
-
-			//test		
-			//IPersistantDebug* pDebug = gEnv->pGameFramework->GetIPersistantDebug();
-			//pDebug->Begin("CHPlayerDebug", false);
-			//pDebug->Add2DText(string().Format("vel: %f, %f, %f", vel.x, vel.y, vel.z).c_str(), 1.5f, ColorF(0.2f, 0.7f, 0.2f), gEnv->pTimer->GetFrameTime());
-			//pDebug->Add2DText(string().Format("rel: %f, %f, %f", relMove.t.x, relMove.t.y, relMove.t.z).c_str(), 1.5f, ColorF(0.2f, 0.7f, 0.2f), gEnv->pTimer->GetFrameTime());
-			//pDebug->Add2DText(string().Format("angle: %f", abs(RAD2DEG(relMove.q.GetRotZ()))).c_str(), 1.5f, ColorF(0.2f, 0.7f, 0.2f), gEnv->pTimer->GetFrameTime());
-
-			vel = relMove.q * vel;
-
-			m_pCharacterController->SetVelocity(m_pEntity->GetRotation() * vel);
+			cameraRot = Quat::CreateRotationVDir(m_pEntity->GetForwardDir());
 		}
 
+		//IPersistantDebug* debug = gEnv->pGameFramework->GetIPersistantDebug();
+		//debug->Begin("player_lookAT", true);
+		//debug->Add2DText(string().Format("angle: %f", RAD2DEG(localCamRotate.GetRotZ())).c_str(), 1.5f, ColorF(0.2f, 0.7f, 0.2f), gEnv->pTimer->GetFrameTime());
 
-		Quat rot = Quat::CreateRotationVDir(m_lastMovementRequest);
-		Quat lastRot = m_pEntity->GetRotation();
-		Quat qResult = Quat::CreateSlerp(lastRot, rot, gEnv->pTimer->GetFrameTime() * 7.f);
-		m_pEntity->SetRotation(qResult);
+		
+		Vec3 targetPos = playerLookPos + (cameraRot * (FORWARD_DIRECTION * 5.0)) * m_pEntity->GetRotation() * RandomLookAt();
+
+		targetPos = Vec3::CreateLerp(lookTargetPos.t, targetPos, gEnv->pTimer->GetFrameTime() * 5);
+
+
+		IAnimationPoseModifierPtr modPtr = m_lookAtModifier;
+		m_pAnimationComponent->GetCharacter()->GetISkeletonAnim()->PushPoseModifier(2, modPtr, "Look Position");
+
+		m_lookAtModifier->PushPosition(m_lookTargetBoneId, IAnimationOperatorQueue::eOp_Override, targetPos);
 	}
 }
 
@@ -469,6 +509,53 @@ void CAlexPlayer::OnMouseY(int activationMode, float value)
 	m_mouseDeltaRotation.y = value * -1.0f;
 }
 
+void CAlexPlayer::SpawnMeshTargetForAssistant()
+{
+	SEntitySpawnParams spawnParams;
+	spawnParams.pClass = gEnv->pEntitySystem->GetClassRegistry()->GetDefaultClass();
+	spawnParams.vPosition = m_cursorPositionInWorld + Vec3(0,0,0.5f);
+
+	m_pTargetMeshToAssistant = gEnv->pEntitySystem->SpawnEntity(spawnParams);
+
+	// Load geometry
+	const int geometrySlot = 0;
+	m_pTargetMeshToAssistant->LoadGeometry(geometrySlot, "%ENGINE%/EngineAssets/Objects/primitive_cylinder.cgf");
+
+	// Scale the cursor down a bit
+	m_pTargetMeshToAssistant->SetScale(Vec3(1.0f));
+	m_pTargetMeshToAssistant->SetViewDistRatio(255);
+
+	// Load the custom cursor material
+	IMaterial* pCursorMaterial = gEnv->p3DEngine->GetMaterialManager()->LoadMaterial("Materials/glow_e.mtl");
+	m_pTargetMeshToAssistant->SetMaterial(pCursorMaterial);
+}
+
+void CAlexPlayer::OnMouseButtonLeft(int activationMode, float value)
+{
+	if (activationMode == eAAM_OnPress)
+	{
+		if (m_isResearchTargeting)
+		{
+			SpawnMeshTargetForAssistant();
+			CPlayerController::Get()->GetAssistant()->GetComponent<CAssistantComponent>()->SendEventBehaviorTree("MoveToSearchLocation");
+		}
+	}
+}
+
+void CAlexPlayer::OnMouseButtonRight(int activationMode, float value)
+{
+	if (activationMode == eAAM_OnPress)
+	{
+		m_isResearchTargeting = true;
+		SpawnCursorEntity();
+	}
+	if (activationMode == eAAM_OnRelease)
+	{
+		m_isResearchTargeting = false;
+		RemoveCursorEntity();
+	}
+}
+
 void CAlexPlayer::OnYawDeltaXILeft(int activationMode, float value)
 {
 	m_xiMovementDelta.x = -value;
@@ -503,9 +590,13 @@ void CAlexPlayer::OnEnter(int activationMode, float value)
 
 void CAlexPlayer::PhysicalizeDeath()
 {
-	m_pEntity->RemoveComponent< Cry::DefaultComponents::CCharacterControllerComponent>();
-	m_pRagdollComponent = m_pEntity->GetOrCreateComponent<Cry::DefaultComponents::CRagdollComponent>();
+	//m_pEntity->RemoveComponent< Cry::DefaultComponents::CCharacterControllerComponent>();
+	//m_pRagdollComponent = m_pEntity->GetOrCreateComponent<Cry::DefaultComponents::CRagdollComponent>();
 	//m_pRagdollComponent->ApplyImpulse(m_collisionVelocity * 5000, m_collisionWorldPos);
+
+
+
+
 
 	//ICharacterInstance* pCharacter = m_pAnimationComponent->GetCharacter();
 	//pCharacter->EnableProceduralFacialAnimation(false);
@@ -534,14 +625,69 @@ void CAlexPlayer::PhysicalizeDeath()
 	//m_pEntity->Physicalize(pp);
 }
 
+void CAlexPlayer::UpdateMovement()
+{
+	if (m_pCharacterController)
+	{
+		const CCamera& systemCamera = gEnv->pSystem->GetViewCamera();
+		Vec3 movementRequest = (GetMovement(Quat(systemCamera.GetMatrix())) + GetXiMovement(Quat(systemCamera.GetMatrix()))).GetNormalized();
+
+		if (movementRequest.len() == 0.0f)
+		{
+			movementRequest = Vec3(0, 0, 0);
+		}
+		else
+		{
+			m_lastMovementRequest = movementRequest;
+		}
+
+
+		if (ICharacterInstance* character = m_pAnimationComponent->GetCharacter())
+		{
+			ISkeletonAnim& skeletonAnim = *character->GetISkeletonAnim();
+
+			QuatT relMove = skeletonAnim.GetRelMovement();
+			Vec3 vel = skeletonAnim.GetCurrentVelocity();
+
+			//test		
+			//IPersistantDebug* pDebug = gEnv->pGameFramework->GetIPersistantDebug();
+			//pDebug->Begin("CHPlayerDebug", false);
+			//pDebug->Add2DText(string().Format("vel: %f, %f, %f", vel.x, vel.y, vel.z).c_str(), 1.5f, ColorF(0.2f, 0.7f, 0.2f), gEnv->pTimer->GetFrameTime());
+			//pDebug->Add2DText(string().Format("rel: %f, %f, %f", relMove.t.x, relMove.t.y, relMove.t.z).c_str(), 1.5f, ColorF(0.2f, 0.7f, 0.2f), gEnv->pTimer->GetFrameTime());
+			//pDebug->Add2DText(string().Format("angle: %f", abs(RAD2DEG(relMove.q.GetRotZ()))).c_str(), 1.5f, ColorF(0.2f, 0.7f, 0.2f), gEnv->pTimer->GetFrameTime());
+
+			vel = relMove.q * vel;
+
+			m_pCharacterController->SetVelocity(m_pEntity->GetRotation() * vel);
+		}
+
+
+		Quat rot = Quat::CreateRotationVDir(m_lastMovementRequest);
+		Quat lastRot = m_pEntity->GetRotation();
+		Quat qResult = Quat::CreateSlerp(lastRot, rot, gEnv->pTimer->GetFrameTime() * 7.f);
+
+		GetEntity()->SetRotation(qResult);
+	}
+}
+
 void CAlexPlayer::UpdateFightMovement()
 {
 	if (m_pCharacterController)
 	{
 		const CCamera& systemCamera = gEnv->pSystem->GetViewCamera();
-		Vec3 movementRequest = (GetMovement(Quat(systemCamera.GetMatrix())) + GetXiMovement(Quat(systemCamera.GetMatrix()))).GetNormalized() * m_speed;
+		Vec3 movementRequest = (GetMovement(Quat(systemCamera.GetMatrix())) + GetXiMovement(Quat(systemCamera.GetMatrix()))).GetNormalized();
 
-		m_pCharacterController->SetVelocity(movementRequest);
+		if (ICharacterInstance* character = m_pAnimationComponent->GetCharacter())
+		{
+			ISkeletonAnim& skeletonAnim = *character->GetISkeletonAnim();
+
+			QuatT relMove = skeletonAnim.GetRelMovement();
+			Vec3 vel = skeletonAnim.GetCurrentVelocity();
+
+			vel = relMove.q * vel;
+
+			m_pCharacterController->SetVelocity(m_pEntity->GetRotation() * vel);
+		}
 
 
 		if (m_pCursorEntity == nullptr)

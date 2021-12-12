@@ -30,11 +30,13 @@ add_sources("Components_uber.cpp"
 		"Components/SpawnPoint.cpp"
 		"Components/CameraController.cpp"
 		"Components/ClearAllComponents.cpp"
+		"Components/Assistant.cpp"
 		"Components/AreaTrigger.h"
 		"Components/CinematicTrigger.h"
 		"Components/SpawnPoint.h"
         "Components/CameraController.h"
         "Components/ClearAllComponents.h"
+        "Components/Assistant.h"
 )
 add_sources("External_uber.cpp"
     PROJECTS Game
@@ -82,6 +84,13 @@ add_sources("DRS_uber.cpp"
     SOURCE_GROUP "DRS"
 		"DRS/ActionShowGameSubtitle.cpp"
 		"DRS/ActionShowGameSubtitle.h"
+)
+
+add_sources("BehaviorTrees_uber.cpp"
+    PROJECTS Game
+    SOURCE_GROUP "BehaviorTrees"
+        "BehaviorTrees/BehaviorTreeNodes_Assistant.cpp"
+        "BehaviorTrees/BehaviorTreeNodes_Assistant.h"
 )
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/CVarOverrides.h")

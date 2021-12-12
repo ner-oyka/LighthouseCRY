@@ -41,6 +41,7 @@ public:
 		desc.AddMember(&CAlexPlayer::m_isMovement, 'ismv', "IsMovement", "Is Movement", "Alex is movement.", true);
 		desc.AddMember(&CAlexPlayer::m_isFight, 'isft', "IsFight", "Is Fight", "Alex join to fight.", false);
 		desc.AddMember(&CAlexPlayer::m_isDeath, 'isdt', "IsDeath", "Is Death", "Alex death.", false);
+		desc.AddMember(&CAlexPlayer::m_isResearchTargeting, 'rstg', "IsResearchTargeting", "Is Research Targeting", "ResearchTargeting.", false);
 	}
 
 	void PhysicalizeDeath();
@@ -52,8 +53,13 @@ public:
 	
 	void UpdateAnimation();
 
+	void UpdateLookAt();
+
 	IEntity* FindCover();
 	void CheckCover();
+
+	IEntity* GetTargetMeshForAssistant() { return m_pTargetMeshToAssistant; }
+	void SpawnMeshTargetForAssistant();
 
 	void SpawnCursorEntity();
 	void RemoveCursorEntity();
@@ -64,6 +70,8 @@ public:
 	void SetMovement(bool val) { m_isMovement = val; }
 	void SetFight(bool val) { m_isFight = val; }
 
+private:
+	Quat RandomLookAt();
 
 protected:
 	Cry::DefaultComponents::CCharacterControllerComponent* m_pCharacterController = nullptr;
@@ -96,6 +104,9 @@ protected:
 	IEntity* m_pCursorEntity = nullptr;
 	float mouseX, mouseY;
 
+	//Target Mesh For Assistant
+	IEntity* m_pTargetMeshToAssistant = nullptr;
+
 
 	//Collision
 	IEntity* m_pCollisionEntity = nullptr;
@@ -107,9 +118,22 @@ protected:
 	bool m_isFight = false;		//Бой
 	bool m_isSwim = false;		//Плавание
 	bool m_isDeath = false;		//Смерть
+	bool m_isResearchTargeting = false;	//Режим выбора цели для изучения ассистентом
 
 	//Cover system
 	IEntity* currentCoverEntity{ nullptr };
+
+	//LookAt
+	bool m_bRandomLook = false;
+	float m_globalLookDuration = 4.f;
+	float m_localLookDuration = 0.7f;
+
+	float m_currentGlobalLookTime;
+	float m_currentLocalLookTime;
+
+	Quat m_currentRandomLookRotation{ IDENTITY };
+
+	IAnimationOperatorQueuePtr m_lookAtModifier;
 
 private:
 	//IInputEvents
@@ -123,6 +147,9 @@ private:
 
 	virtual void OnMouseX(int activationMode, float value) override;
 	virtual void OnMouseY(int activationMode, float value) override;
+
+	virtual void OnMouseButtonLeft(int activationMode, float value) override;
+	virtual void OnMouseButtonRight(int activationMode, float value) override;
 
 	virtual void OnYawDeltaXILeft(int activationMode, float value) override;
 	virtual void OnPitchDeltaXILeft(int activationMode, float value) override;

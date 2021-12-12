@@ -17,6 +17,8 @@
 
 #include "DRS/ActionShowGameSubtitle.h"
 
+#include "BehaviorTrees/BehaviorTreeNodes_Assistant.h"
+
 CGamePlugin::~CGamePlugin()
 {
 	gEnv->pSystem->GetISystemEventDispatcher()->RemoveListener(this);
@@ -68,6 +70,9 @@ void CGamePlugin::OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lp
 
 		//DRS
 		REGISTER_DRS_CUSTOM_ACTION(CActionShowGameSubtitle);
+
+		//Register BehaviorTree Nodes
+		BehaviorTree::RegisterBehaviorTreeNodes_Assistant();
 	}
 	break;
 

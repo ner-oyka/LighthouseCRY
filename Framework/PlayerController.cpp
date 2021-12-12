@@ -44,6 +44,7 @@ void CPlayerController::Initialize()
 	if (!gEnv->IsEditor())
 	{
 		AlexSpawn();
+		AssistantSpawn();
 	}
 
 
@@ -85,11 +86,13 @@ void CPlayerController::ProcessEvent(const SEntityEvent& event)
 		if (event.nParam[0] == 1)
 		{
 			AlexSpawn();
+			AssistantSpawn();
 		}
 
 		if (event.nParam[0] == 0)
 		{
 			m_pControlledPawn = nullptr;
+			m_pAssistant = nullptr;
 			//gEnv->pEntitySystem->RemoveEntity(m_pControlledPawn->GetEntityId(), true);
 			//m_pControlledPawn = nullptr;
 		}
@@ -119,5 +122,27 @@ void CPlayerController::AlexSpawn()
 
 		CAlexPlayer* pPlayer = pPlayerEntity->GetComponent<CAlexPlayer>();
 		SetControlledPawn(pPlayer);
+	}
+}
+
+void CPlayerController::AssistantSpawn()
+{
+	SEntitySpawnParams spawnParams;
+	spawnParams.pClass = gEnv->pEntitySystem->GetClassRegistry()->FindClass(m_assistantClass.value);
+	const string playerName = "AssistantJoe";
+	spawnParams.sName = playerName;
+
+	spawnParams.nFlags |= ENTITY_FLAG_TRIGGER_AREAS;
+
+	spawnParams.vPosition = m_pEntity->GetWorldPos();
+	spawnParams.qRotation = m_pEntity->GetWorldRotation();
+
+	if (IEntity* pAssistantEntity = gEnv->pEntitySystem->SpawnEntity(spawnParams))
+	{
+		const Matrix34 newTransform = CSpawnPointComponent::GetFirstSpawnPointTransform();
+		pAssistantEntity->SetWorldTM(newTransform);
+		CSpawnPointComponent::RemoveSpawnPoint();
+
+		m_pAssistant = pAssistantEntity;
 	}
 }

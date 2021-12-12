@@ -73,13 +73,15 @@ void CCameraControllerComponent::ProcessEvent(const SEntityEvent& event)
 		m_quatLastTargetRotation = m_quatTargetRotation;
 
 		m_newCameraDistanceThirdPerson = m_cameraDistanceThirdPerson;
+
+		m_newFieldOfView = m_fieldOfViewDefault;
 	}
 	break;
 	}
 }
 
 void CCameraControllerComponent::UpdateCamera()
-{	
+{
 	if (cameraType == Game::ECameraType::ThirdPerson)
 	{
 		// Third Person update camera
@@ -98,17 +100,19 @@ void CCameraControllerComponent::UpdateCamera()
 
 		Quat quatPreTransYP = Quat(Ang3(m_viewPitch, 0.0f, m_viewYaw));
 
-		Vec3 vecTargetAimPosition = playerPos + Vec3(0.f, 0.f, 1.8f);
+
+		Interpolate(m_rightOffset, m_newRightOffset, 1, gEnv->pTimer->GetFrameTime());
+		Vec3 rightOffset = GetEntity()->GetForwardDir().cross(Vec3(0.f, 0.f, 1.f)).GetNormalized() * m_rightOffset;
+				
+		Vec3 vecTargetAimPosition = playerPos + Vec3(0.f, 0.f, 1.7f) + rightOffset;
 
 		Quat quatTargetRotationGoal = m_quatTargetRotation * quatPreTransYP;
 		Quat quatTargetRotation = Quat::CreateSlerp(m_quatLastTargetRotation, quatTargetRotationGoal, gEnv->pTimer->GetFrameTime() * 7.0f);
 		m_quatLastTargetRotation = quatTargetRotation;
 
-		Vec3 viewPositionOffset = ZERO;
-		
 		Interpolate(m_cameraDistanceThirdPerson, m_newCameraDistanceThirdPerson, 2, gEnv->pTimer->GetFrameTime());
 
-		Vec3 vecViewPosition = vecTargetAimPosition + (quatTargetRotation * (FORWARD_DIRECTION * m_cameraDistanceThirdPerson)) + quatTargetRotation * viewPositionOffset;
+		Vec3 vecViewPosition = vecTargetAimPosition + (quatTargetRotation * (FORWARD_DIRECTION * m_cameraDistanceThirdPerson));
 
 		Quat quatViewRotationGoal = Quat::CreateRotationVDir((vecTargetAimPosition - vecViewPosition).GetNormalizedSafe());
 		Quat quatViewRotation = Quat::CreateSlerp(m_quatLastViewRotation, quatViewRotationGoal, gEnv->pTimer->GetFrameTime() * 50.f);
@@ -123,13 +127,17 @@ void CCameraControllerComponent::UpdateCamera()
 
 		m_pEntity->SetLocalTM(m_cameraMatrix);
 
+		//FOV
+		Interpolate(m_fieldOfView, m_newFieldOfView, 2, gEnv->pTimer->GetFrameTime());
+		m_pCameraComponent->SetFieldOfView(CryTransform::CAngle::FromDegrees(m_fieldOfView));
+
 		return;
 	}
 
 	if (m_pCameraRootEntity)
-	{		
+	{
 		Vec3 pos = Vec3::CreateLerp(m_pEntity->GetPos(), m_pCameraRootEntity->GetPos(), gEnv->pTimer->GetFrameTime() * followMoveCameraSpeed);
-		Quat rot = Quat::CreateSlerp(m_pEntity->GetRotation(), m_pCameraRootEntity->GetRotation(), gEnv->pTimer->GetFrameTime() * followRotateCameraSpeed);		
+		Quat rot = Quat::CreateSlerp(m_pEntity->GetRotation(), m_pCameraRootEntity->GetRotation(), gEnv->pTimer->GetFrameTime() * followRotateCameraSpeed);
 
 		//Look At
 		if (cameraType == Game::ECameraType::LookAt)
@@ -139,176 +147,41 @@ void CCameraControllerComponent::UpdateCamera()
 			rot = Quat::CreateRotationVDir((vecTargetAimPosition - pos).GetNormalizedSafe());
 		}
 
+		if (cameraType == Game::ECameraType::ViewControl)
+		{
+			m_viewPitch += (GetMousePitchDelta() + GetXiPitchDelta()) * 4.0f;
+			//m_viewPitch = clamp_tpl(m_viewPitch, DEG2RAD(5.0f), DEG2RAD(60.0f));
+			m_viewYaw += (GetMouseYawDelta() - GetXiYawDelta()) * 4.0f;
+			//m_viewYaw = clamp_tpl(m_viewYaw, DEG2RAD(-90.0f), DEG2RAD(90.0f));
+
+			if (m_viewYaw > gf_PI)
+				m_viewYaw -= gf_PI2;
+			if (m_viewYaw < -gf_PI)
+				m_viewYaw += gf_PI2;
+
+			Quat quatPreTransYP = Quat(Ang3(m_viewPitch * -1.0f, 0.0f, m_viewYaw));
+
+			Quat quatTargetRotationGoal = m_quatTargetRotation * quatPreTransYP;
+			Quat quatTargetRotation;
+
+			quatTargetRotation = Quat::CreateSlerp(m_quatLastTargetRotation, quatTargetRotationGoal, gEnv->pTimer->GetFrameTime() * 5.0f);
+			m_quatLastTargetRotation = quatTargetRotation;
+
+			rot = quatTargetRotation;
+		}
+
+		if (cameraType == Game::ECameraType::TransformControl)
+		{
+			// in dev
+		}
+
 		Matrix34 camMatrix = Matrix34::Create(Vec3(1.0f), rot, pos);
 		m_pEntity->SetLocalTM(camMatrix);
 	}
 
-	
 	//WORLD MATRIX TO LOCAL
 	//m_pEntity->SetLocalTM(m_pEntity->GetParentAttachPointWorldTM().GetInverted() * camMatrix);
-
-	//pitch, yaw
-	//if (cameraType == Game::ECameraType::ViewControl)
-	//{
-	//	auto pPlayerInput = pPlayer->GetEntity()->GetComponent<CPlayerInputComponent>();
-	//	if (pPlayerInput)
-	//	{
-	//		m_viewPitch += pPlayerInput->GetMousePitchDelta() + pPlayerInput->GetXiPitchDelta();
-	//		//m_viewPitch = clamp_tpl(m_viewPitch, DEG2RAD(5.0f), DEG2RAD(60.0f));
-	//		m_viewYaw += pPlayerInput->GetMouseYawDelta() - pPlayerInput->GetXiYawDelta();
-	//		//m_viewYaw = clamp_tpl(m_viewYaw, DEG2RAD(-180.0f), DEG2RAD(-50.0f));
-
-	//		if (m_viewYaw > gf_PI)
-	//			m_viewYaw -= gf_PI2;
-	//		if (m_viewYaw < -gf_PI)
-	//			m_viewYaw += gf_PI2;
-
-	//		Quat quatPreTransYP = Quat(Ang3(m_viewPitch, 0.0f, m_viewYaw));
-	//		Quat quatPostTransYP = Quat::CreateRotationXYZ(Ang3(m_viewPitch * 0.1f, 0.0f, 0.0f));
-
-	//		float zoomDistance = pPlayer->GetEntity()->GetPos().GetDistance(m_pEntity->GetPos());
-
-	//		Quat parentOffset = camRoot->GetWorldRotation();
-
-	//		Quat quatTargetRotationGoal = m_quatTargetRotation * quatPreTransYP;
-	//		Quat quatTargetRotation;
-
-	//		quatTargetRotation = Quat::CreateSlerp(m_quatLastTargetRotation, quatTargetRotationGoal, gEnv->pTimer->GetFrameTime() * 5.0f);
-	//		m_quatLastTargetRotation = quatTargetRotation;
-
-	//		Vec3 viewPositionOffset = ZERO;
-	//		Vec3 vecViewPosition = pPlayer->GetEntity()->GetPos() + (quatTargetRotation * parentOffset * (FORWARD_DIRECTION * zoomDistance)) + quatTargetRotation * viewPositionOffset;
-
-	//		Vec3 vecTargetAimPosition = GetTargetAimPosition(pPlayer->GetEntity());
-
-	//		Quat quatViewRotationGoal = Quat::CreateRotationVDir((vecTargetAimPosition - vecViewPosition).GetNormalizedSafe());
-
-	//		Quat quatViewRotation;
-
-	//		quatViewRotation = Quat::CreateSlerp(m_quatLastViewRotation, quatViewRotationGoal, gEnv->pTimer->GetFrameTime() * 5.f);
-	//		m_quatLastViewRotation = quatViewRotation;
-
-	//		Vec3 aimPositionOffset = Vec3(0.45f, -0.5f, 0.0f);
-	//		vecViewPosition += quatViewRotation * aimPositionOffset;
-
-	//		Quat quatOrbitRotation = quatViewRotation * quatPostTransYP;
-
-	//		//CollisionDetection(vecTargetAimPosition, vecViewPosition);
-
-	//		m_vecLastPosition = vecViewPosition;
-
-
-
-	//		m_cameraMatrix = Matrix34::Create(Vec3(1.0f), quatOrbitRotation, m_pEntity->GetPos());
-
-	//		Matrix34 localTM = m_cameraMatrix;
-	//		m_pEntity->SetLocalTM(localTM);
-	//	}
-	//}	
-
-	/*auto pPlayerInput = pPlayer->GetEntity()->GetComponent<CPlayerInputComponent>();
-
-	if (pPlayerInput)
-	{
-		m_viewPitch += pPlayerInput->GetMousePitchDelta() + pPlayerInput->GetXiPitchDelta();
-		m_viewPitch = clamp_tpl(m_viewPitch, DEG2RAD(-85.0f), DEG2RAD(85.0f));
-		m_viewYaw += pPlayerInput->GetMouseYawDelta() - pPlayerInput->GetXiYawDelta();
-
-		if (m_viewYaw > gf_PI)
-			m_viewYaw -= gf_PI2;
-		if (m_viewYaw < -gf_PI)
-			m_viewYaw += gf_PI2;
-
-		Quat quatPreTransYP = Quat(Ang3(m_viewPitch, 0.0f, m_viewYaw));
-		Quat quatPostTransYP = Quat::CreateRotationXYZ(Ang3(m_viewPitch * 0.1f, 0.0f, 0.0f));
-
-		Vec3 vecTargetAimPosition = GetTargetAimPosition(pPlayer->GetEntity());
-
-		float shapedZoom = (m_zoom * m_zoom) / (1.5f * 1.5f);
-		float zoomDistance = 10.0f * shapedZoom;
-
-		Quat quatTargetRotationGoal = m_quatTargetRotation * quatPreTransYP;
-		Quat quatTargetRotation;
-
-		quatTargetRotation = Quat::CreateSlerp(m_quatLastTargetRotation, quatTargetRotationGoal, gEnv->pTimer->GetFrameTime() * 20.0f);
-		m_quatLastTargetRotation = quatTargetRotation;
-
-		Vec3 viewPositionOffset = ZERO;
-		Vec3 vecViewPosition = vecTargetAimPosition + (quatTargetRotation * (FORWARD_DIRECTION * zoomDistance)) + quatTargetRotation * viewPositionOffset;
-
-		Quat quatViewRotationGoal = Quat::CreateRotationVDir((vecTargetAimPosition - vecViewPosition).GetNormalizedSafe());
-
-		Quat quatViewRotation;
-
-		quatViewRotation = Quat::CreateSlerp(m_quatLastViewRotation, quatViewRotationGoal, gEnv->pTimer->GetFrameTime() * 20.f);
-		m_quatLastViewRotation = quatViewRotation;
-
-		Vec3 aimPositionOffset = Vec3(0.45f, -0.5f, 0.0f);
-		vecViewPosition += quatViewRotation * aimPositionOffset;
-
-		Quat quatOrbitRotation = quatViewRotation * quatPostTransYP;
-
-		m_vecLastPosition = vecViewPosition;
-
-		m_cameraMatrix = Matrix34::Create(Vec3(1.0f), quatOrbitRotation, vecViewPosition + quatOrbitRotation * Vec3(ZERO));
-
-		const CCamera& systemCamera = gEnv->pSystem->GetViewCamera();
-		m_pCameraComponent->GetCamera().SetFrustum(systemCamera.GetViewSurfaceX(), systemCamera.GetViewSurfaceZ(), m_fieldOfView.ToRadians(), m_nearPlane,
-			gEnv->p3DEngine->GetMaxViewDistance(), systemCamera.GetPixelAspectRatio());
-		m_pCameraComponent->GetCamera().SetMatrix(m_cameraMatrix);
-		gEnv->pSystem->SetViewCamera(m_pCameraComponent->GetCamera());
-		
-		Matrix34 localTM = m_pEntity->GetParentAttachPointWorldTM().GetInverted() * m_cameraMatrix;
-		m_pEntity->SetLocalTM(localTM);
-
-		return;
-	}
-	m_cameraMatrix = Matrix34::Create(Vec3(1.0f), IDENTITY, ZERO);*/
-}
-
-//Vec3 CCameraControllerComponent::GetTargetAimPosition(IEntity* const pEntity)
-//{
-//	Vec3 position{ 0.0f, 0.0f, 1.82f };
-//
-//	if (pEntity)
-//	{
-//		// If we are attached to an entity that is an actor we can use their eye position.
-//		Vec3 localEyePosition = position;
-//
-//		// Pose is based on entity position and the eye position.
-//		// We will use the rotation of the entity as a base, and apply pitch based on our own reckoning.
-//		position = pEntity->GetPos() + localEyePosition;
-//
-//	}
-//
-//	return position;
-//}
-
-//bool CCameraControllerComponent::CollisionDetection(const Vec3& Goal, Vec3& CameraPosition)
-//{
-//	bool updatedCameraPosition = false;
-//
-//	// Skip the target actor for this.
-//	ray_hit rayhit;
-//	static IPhysicalEntity* pSkipEnts[10];
-//	pSkipEnts[0] = gEnv->pEntitySystem->GetEntity(CPlayerComponent::GetPlayer()->GetEntityId())->GetPhysics();
-//
-//	// Perform the ray cast.
-//	int hits = gEnv->pPhysicalWorld->RayWorldIntersection(Goal,
-//		CameraPosition - Goal,
-//		ent_static | ent_sleeping_rigid | ent_rigid | ent_independent | ent_terrain,
-//		rwi_stop_at_pierceable | rwi_colltype_any,
-//		&rayhit,
-//		1, pSkipEnts, 2);
-//
-//	if (hits)
-//	{
-//		CameraPosition = rayhit.pt;
-//		updatedCameraPosition = true;
-//	}
-//
-//	return updatedCameraPosition;
-//}
+}	
 
 void CCameraControllerComponent::SetOffset(const Vec3& offset)
 {
@@ -453,4 +326,39 @@ void CCameraControllerComponent::OnMouseWheel(int activationMode, float value)
 {
 	m_newCameraDistanceThirdPerson -= crymath::clamp(value, -1.f, 1.f) * 0.15f;
 	m_newCameraDistanceThirdPerson = crymath::clamp(m_newCameraDistanceThirdPerson, 1.f, 20.f);
+}
+
+void CCameraControllerComponent::OnMouseButtonRight(int activationMode, float value)
+{
+	if (activationMode == eAAM_OnPress)
+	{
+		m_saveCameraDistanceThirdPerson = m_newCameraDistanceThirdPerson;
+		m_newCameraDistanceThirdPerson = 2.0f;
+		m_newRightOffset = 0.5f;
+		m_newFieldOfView = m_fieldOfViewExamine;
+	}
+
+	if (activationMode == eAAM_OnRelease)
+	{
+		m_newCameraDistanceThirdPerson = m_saveCameraDistanceThirdPerson;
+		m_newRightOffset = 0.0f;
+		m_newFieldOfView = m_fieldOfViewDefault;
+	}
+}
+
+void CCameraControllerComponent::OnTriggerXIRight(int activationMode, float value)
+{
+	if (value > 0)
+	{
+		m_saveCameraDistanceThirdPerson = m_newCameraDistanceThirdPerson;
+		m_newCameraDistanceThirdPerson = 2.0f;
+		m_newRightOffset = 0.5f;
+		m_newFieldOfView = m_fieldOfViewExamine;
+	}
+	else
+	{
+		m_newCameraDistanceThirdPerson = m_saveCameraDistanceThirdPerson;
+		m_newRightOffset = 0.0f;
+		m_newFieldOfView = m_fieldOfViewDefault;
+	}
 }
