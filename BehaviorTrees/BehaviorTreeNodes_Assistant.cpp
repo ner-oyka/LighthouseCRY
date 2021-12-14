@@ -233,6 +233,10 @@ namespace BehaviorTree
 			m_pAgentEntity = gEnv->pEntitySystem->GetEntity(context.entityId);
 			m_pAssistant = m_pAgentEntity->GetComponent<CAssistantComponent>();
 			m_searchPos = CPlayerController::Get()->GetControlledPawn()->GetEntity()->GetComponent<CAlexPlayer>()->GetCursorWorldPos();
+
+			m_searchPos = m_pAssistant->FindReachablePosition(m_searchPos);
+
+			CPlayerController::Get()->GetControlledPawn()->GetEntity()->GetComponent<CAlexPlayer>()->RemoveTargetMeshToAssistant();
 		}
 
 		virtual Status Update(const UpdateContext& context)
@@ -240,14 +244,9 @@ namespace BehaviorTree
 			//RuntimeData& runtimeData = GetRuntimeData<RuntimeData>(context);
 			if (m_pAgentEntity)
 			{
-				bool completed = m_pAssistant->Searching(m_searchPos);
+				bool completed = m_pAssistant->MoveToLocation(m_searchPos);
 				if (completed)
 				{
-					if (IEntity* targetMesh = CPlayerController::Get()->GetControlledPawn()->GetEntity()->GetComponent<CAlexPlayer>()->GetTargetMeshForAssistant())
-					{
-						gEnv->pEntitySystem->RemoveEntity(targetMesh->GetId());
-						targetMesh = nullptr;
-					}
 					return Success;
 				}
 			}

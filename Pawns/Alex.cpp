@@ -143,6 +143,7 @@ void CAlexPlayer::ProcessEvent(const SEntityEvent& event)
 		{
 			// Removed by Sandbox
 			m_pCursorEntity = nullptr;
+			m_pTargetMeshToAssistant = nullptr;
 		}
 	}
 	break;
@@ -291,6 +292,7 @@ void CAlexPlayer::SpawnCursorEntity()
 	if (m_pCursorEntity)
 	{
 		gEnv->pEntitySystem->RemoveEntity(m_pCursorEntity->GetId());
+		m_pCursorEntity = nullptr;
 	}
 
 	SEntitySpawnParams spawnParams;
@@ -314,10 +316,19 @@ void CAlexPlayer::SpawnCursorEntity()
 	m_pCursorEntity->SetMaterial(pCursorMaterial);
 }
 
+void CAlexPlayer::RemoveTargetMeshToAssistant()
+{
+	gEnv->pEntitySystem->RemoveEntity(m_pTargetMeshToAssistant->GetId());
+	m_pTargetMeshToAssistant = nullptr;
+}
+
 void CAlexPlayer::RemoveCursorEntity()
 {
-	gEnv->pEntitySystem->RemoveEntity(m_pCursorEntity->GetId());
-	m_pCursorEntity = nullptr;
+	if (m_pCursorEntity)
+	{
+		gEnv->pEntitySystem->RemoveEntity(m_pCursorEntity->GetId());
+		m_pCursorEntity = nullptr;
+	}
 }
 
 void CAlexPlayer::UpdateCursor()
@@ -343,18 +354,18 @@ void CAlexPlayer::UpdateCursor()
 	const unsigned int rayFlags = rwi_colltype_any | rwi_ignore_noncolliding | rwi_stop_at_pierceable;
 	ray_hit hit;
 
-	if (gEnv->pPhysicalWorld->RayWorldIntersection(systemCamera.GetPosition(), systemCamera.GetViewdir() * gEnv->p3DEngine->GetMaxViewDistance(), ent_all | ent_rigid | ent_sleeping_rigid | ent_independent | ent_static | ent_areas, rayFlags, &hit, 1, this->GetEntity()->GetPhysicalEntity()))
+	if (gEnv->pPhysicalWorld->RayWorldIntersection(systemCamera.GetPosition(), systemCamera.GetViewdir() * gEnv->p3DEngine->GetMaxViewDistance(), ent_all, rayFlags, &hit, 1, this->GetEntity()->GetPhysicalEntity()))
 	{
 		m_cursorPositionInWorld = hit.pt;
-
-		if (m_pCursorEntity != nullptr)
-		{
-			m_pCursorEntity->SetPosRotScale(m_cursorPositionInWorld, IDENTITY, m_pCursorEntity->GetScale());
-		}
 	}
 	else
 	{
-		m_cursorPositionInWorld = ZERO;
+		m_cursorPositionInWorld = systemCamera.GetPosition() + systemCamera.GetViewdir() * 100.0f;
+	}
+
+	if (m_pCursorEntity)
+	{
+		m_pCursorEntity->SetPosRotScale(m_cursorPositionInWorld, IDENTITY, m_pCursorEntity->GetScale());
 	}
 }
 
@@ -511,6 +522,12 @@ void CAlexPlayer::OnMouseY(int activationMode, float value)
 
 void CAlexPlayer::SpawnMeshTargetForAssistant()
 {
+	if (m_pTargetMeshToAssistant)
+	{
+		gEnv->pEntitySystem->RemoveEntity(m_pTargetMeshToAssistant->GetId());
+		m_pTargetMeshToAssistant = nullptr;
+	}
+
 	SEntitySpawnParams spawnParams;
 	spawnParams.pClass = gEnv->pEntitySystem->GetClassRegistry()->GetDefaultClass();
 	spawnParams.vPosition = m_cursorPositionInWorld + Vec3(0,0,0.5f);
@@ -519,14 +536,14 @@ void CAlexPlayer::SpawnMeshTargetForAssistant()
 
 	// Load geometry
 	const int geometrySlot = 0;
-	m_pTargetMeshToAssistant->LoadGeometry(geometrySlot, "%ENGINE%/EngineAssets/Objects/primitive_cylinder.cgf");
+	m_pTargetMeshToAssistant->LoadGeometry(geometrySlot, "%ENGINE%/EngineAssets/Objects/primitive_sphere.cgf");
 
 	// Scale the cursor down a bit
 	m_pTargetMeshToAssistant->SetScale(Vec3(1.0f));
 	m_pTargetMeshToAssistant->SetViewDistRatio(255);
 
 	// Load the custom cursor material
-	IMaterial* pCursorMaterial = gEnv->p3DEngine->GetMaterialManager()->LoadMaterial("Materials/glow_e.mtl");
+	IMaterial* pCursorMaterial = gEnv->p3DEngine->GetMaterialManager()->LoadMaterial("Materials/targetCursor.mtl");
 	m_pTargetMeshToAssistant->SetMaterial(pCursorMaterial);
 }
 
@@ -580,11 +597,33 @@ void CAlexPlayer::OnEnter(int activationMode, float value)
 {
 	if (activationMode == eAAM_OnPress)
 	{
-		//IEntity* pEntity = gEnv->pEntitySystem->FindEntityByName("TestCar");
-		//if (pEntity)
-		//{
-		//	CPlayerController::Get()->SetControlledPawn(pEntity->GetComponent<CCarPlayer>());
-		//}
+		CPlayerController::Get()->GetAssistant()->GetComponent<CAssistantComponent>()->SendEventBehaviorTree("ToPlayer");
+	}
+}
+
+void CAlexPlayer::OnXI_A(int activationMode, float value)
+{
+	if (activationMode == eAAM_OnPress)
+	{
+		if (m_isResearchTargeting)
+		{
+			SpawnMeshTargetForAssistant();
+			CPlayerController::Get()->GetAssistant()->GetComponent<CAssistantComponent>()->SendEventBehaviorTree("MoveToSearchLocation");
+		}
+	}
+}
+
+void CAlexPlayer::OnTriggerXIRight(int activationMode, float value)
+{
+	if (value > 0 && m_isResearchTargeting == false)
+	{
+		m_isResearchTargeting = true;
+		SpawnCursorEntity();
+	}
+	else if (value == 0)
+	{
+		m_isResearchTargeting = false;
+		RemoveCursorEntity();
 	}
 }
 

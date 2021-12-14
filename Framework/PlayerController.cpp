@@ -129,7 +129,7 @@ void CPlayerController::AssistantSpawn()
 {
 	SEntitySpawnParams spawnParams;
 	spawnParams.pClass = gEnv->pEntitySystem->GetClassRegistry()->FindClass(m_assistantClass.value);
-	const string playerName = "AssistantJoe";
+	const string playerName = string().Format("AssistantJoe %", PRISIZE_T);
 	spawnParams.sName = playerName;
 
 	spawnParams.nFlags |= ENTITY_FLAG_TRIGGER_AREAS;

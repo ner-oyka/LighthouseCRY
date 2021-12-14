@@ -58,7 +58,7 @@ public:
 	IEntity* FindCover();
 	void CheckCover();
 
-	IEntity* GetTargetMeshForAssistant() { return m_pTargetMeshToAssistant; }
+	void RemoveTargetMeshToAssistant();
 	void SpawnMeshTargetForAssistant();
 
 	void SpawnCursorEntity();
@@ -102,7 +102,7 @@ protected:
 	//Cursor
 	Vec3 m_cursorPositionInWorld = ZERO;
 	IEntity* m_pCursorEntity = nullptr;
-	float mouseX, mouseY;
+	float mouseX, mouseY = 0.0f;
 
 	//Target Mesh For Assistant
 	IEntity* m_pTargetMeshToAssistant = nullptr;
@@ -158,4 +158,7 @@ private:
 	virtual void OnPitchDeltaXIRight(int activationMode, float value) override;
 
 	virtual void OnEnter(int activationMode, float value) override;
+
+	virtual void OnXI_A(int activationMode, float value) override;
+	virtual void OnTriggerXIRight(int activationMode, float value) override;
 };

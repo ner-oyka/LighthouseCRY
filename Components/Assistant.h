@@ -5,9 +5,11 @@
 #include <CryEntitySystem/IEntitySystem.h>
 
 #include <DefaultComponents/Physics/CharacterControllerComponent.h>
-#include <DefaultComponents/Geometry/StaticMeshComponent.h>
 #include <CryAISystem/Components/IEntityNavigationComponent.h>
 #include <CryAISystem/Components/IEntityBehaviorTreeComponent.h>
+#include <DefaultComponents/Geometry/AdvancedAnimationComponent.h>
+
+#include <DefaultComponents/Lights/ProjectorLightComponent.h>
 
 class CAssistantComponent final : public IEntityComponent
 {
@@ -27,28 +29,50 @@ public:
 		desc.SetLabel("Assistant");
 		desc.SetDescription("This is automatic mobile science station");
 		desc.SetComponentFlags({ IEntityComponent::EFlags::Transform, IEntityComponent::EFlags::Socket, IEntityComponent::EFlags::Attach });
+
+		desc.AddMember(&CAssistantComponent::m_flashlightClass, 'flcl', "FlashlightEntityClass", "FlashlightEntityClass", "FlashlightEntityClass.", "");
 	}
+	Schematyc::EntityClassName m_flashlightClass = "";
 
 	//Send BevaviorTree SIGNALS
 	void SendEventBehaviorTree(string signalName);
 
 	bool MoveToPlayer();
+
 	bool FollowToPlayer();
 
 	bool Searching(Vec3 searchPos);
+
+	bool MoveToLocation(Vec3 targetPos);
+
+	Vec3 FindReachablePosition(Vec3 position);
 
 	void SendDRSSignal(string signalName);
 
 	float GetDistanceToPlayer();
 
 private:
+	void UpdateLook();
+
+	void InitializeEngineBones();
+	void UpdateEngineDir();
+
+	void UpdateCheckCurrentPosition();
+
+	Quat RandomLook();
+
+private:
 	Cry::DefaultComponents::CCharacterControllerComponent* m_pCharacterController = nullptr;
-	Cry::DefaultComponents::CStaticMeshComponent* m_pStaticMesh = nullptr;
 	IEntityNavigationComponent* m_pNavigationAgent = nullptr;
 	IEntityBehaviorTreeComponent* m_pBehaviorTreeComponent = nullptr;
+	Cry::DefaultComponents::CAdvancedAnimationComponent* m_pAnimationMeshComponent = nullptr;
+
 
 private:
 	IEntity* m_playerEntity;
+
+	IEntity* m_pFlashlightEntity = nullptr;
+
 
 	//DRS
 	DRS::IResponseActor* p_DRSActor = nullptr;
@@ -57,4 +81,27 @@ private:
 
 	//Searching
 	float m_searchNewPosDuration = 2.0f;
+
+	//Look
+	bool m_bRandomLook = false;
+	float m_globalLookDuration = 2.f;
+	float m_localLookDuration = 0.3f;
+
+	float m_currentGlobalLookTime;
+	float m_currentLocalLookTime;
+
+	Quat m_currentRandomLookRotation{ IDENTITY };
+
+	IAnimationOperatorQueuePtr m_lookAtModifier;
+
+	//Rotate Engines
+	IAnimationOperatorQueuePtr m_engineRotateAtModifier;
+	Vec3 m_originalRightEnginePos = ZERO;
+	Vec3 m_originalLeftEnginePos = ZERO;
+
+	int m_engineRightBoneId = 0;
+	int m_engineLeftBoneId = 0;
+
+	//Check stuck
+	Vec3 m_lastReachablePosition = ZERO;
 };

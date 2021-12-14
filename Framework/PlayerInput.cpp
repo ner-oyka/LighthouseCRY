@@ -41,6 +41,9 @@ void CPlayerInput::RegisterActionMaps(IEntity* inputListener)
 	m_pInputComponent->RegisterAction("input", "xi_trigger_r", [this](int activationMode, float value) {ObserverManager::notify(&IInputEvents::OnTriggerXIRight, activationMode, value); });
 	m_pInputComponent->BindAction("input", "xi_trigger_r", eAID_XboxPad, EKeyId::eKI_XI_TriggerR);
 
+	m_pInputComponent->RegisterAction("input", "xi_a", [this](int activationMode, float value) {ObserverManager::notify(&IInputEvents::OnXI_A, activationMode, value); });
+	m_pInputComponent->BindAction("input", "xi_a", eAID_XboxPad, EKeyId::eKI_XI_A);
+
 	m_pInputComponent->RegisterAction("input", "xi_b", [this](int activationMode, float value) {ObserverManager::notify(&IInputEvents::OnXI_B, activationMode, value); });
 	m_pInputComponent->BindAction("input", "xi_b", eAID_XboxPad, EKeyId::eKI_XI_B);
 

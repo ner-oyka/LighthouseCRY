@@ -22,21 +22,34 @@ add_sources("Code_uber.cpp"
 		"GamePlugin.h"
 		"StdAfx.h"
 )
+add_sources("BehaviorTrees_uber.cpp"
+    PROJECTS Game
+    SOURCE_GROUP "BehaviorTrees"
+		"BehaviorTrees/BehaviorTreeNodes_Assistant.cpp"
+		"BehaviorTrees/BehaviorTreeNodes_Assistant.h"
+)
 add_sources("Components_uber.cpp"
     PROJECTS Game
     SOURCE_GROUP "Components"
 		"Components/AreaTrigger.cpp"
-		"Components/CinematicTrigger.cpp"
-		"Components/SpawnPoint.cpp"
-		"Components/CameraController.cpp"
-		"Components/ClearAllComponents.cpp"
 		"Components/Assistant.cpp"
+		"Components/CameraController.cpp"
+		"Components/CinematicTrigger.cpp"
+		"Components/ClearAllComponents.cpp"
+		"Components/SpawnPoint.cpp"
 		"Components/AreaTrigger.h"
+		"Components/Assistant.h"
+		"Components/CameraController.h"
 		"Components/CinematicTrigger.h"
+		"Components/ClearAllComponents.h"
+		"Components/Item.h"
 		"Components/SpawnPoint.h"
-        "Components/CameraController.h"
-        "Components/ClearAllComponents.h"
-        "Components/Assistant.h"
+)
+add_sources("DRS_uber.cpp"
+    PROJECTS Game
+    SOURCE_GROUP "DRS"
+		"DRS/ActionShowGameSubtitle.cpp"
+		"DRS/ActionShowGameSubtitle.h"
 )
 add_sources("External_uber.cpp"
     PROJECTS Game
@@ -56,9 +69,9 @@ add_sources("FlowNodes_uber.cpp"
     SOURCE_GROUP "FlowNodes"
 		"FlowNodes/EntityFlowNode.cpp"
 		"FlowNodes/FlowCameraNodes.cpp"
+		"FlowNodes/FlowLocalizationNodes.cpp"
 		"FlowNodes/FlowMovieCustomNodes.cpp"
 		"FlowNodes/FlowPlayerNodes.cpp"
-		"FlowNodes/FlowLocalizationNodes.cpp"
 		"FlowNodes/EntityFlowNode.h"
 )
 add_sources("Framework_uber.cpp"
@@ -77,20 +90,6 @@ add_sources("Pawns_uber.cpp"
 		"Pawns/Car.cpp"
 		"Pawns/Alex.h"
 		"Pawns/Car.h"
-)
-
-add_sources("DRS_uber.cpp"
-    PROJECTS Game
-    SOURCE_GROUP "DRS"
-		"DRS/ActionShowGameSubtitle.cpp"
-		"DRS/ActionShowGameSubtitle.h"
-)
-
-add_sources("BehaviorTrees_uber.cpp"
-    PROJECTS Game
-    SOURCE_GROUP "BehaviorTrees"
-        "BehaviorTrees/BehaviorTreeNodes_Assistant.cpp"
-        "BehaviorTrees/BehaviorTreeNodes_Assistant.h"
 )
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/CVarOverrides.h")
