@@ -1,3 +1,5 @@
+//Deer Solar Games | 2021 | Lighthouse project
+
 #pragma once
 
 #include <DefaultComponents/Input/InputComponent.h>

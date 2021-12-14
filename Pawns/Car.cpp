@@ -75,6 +75,20 @@ float CCarPlayer::GetFootBrake()
 	return m_vehicleStatus.footbrake;
 }
 
+void CCarPlayer::SetDriver(IEntity* driverEntity)
+{
+	GetEntity()->AttachChild(driverEntity);
+	driverEntity->SetRotation(Quat::CreateRotationVDir(GetEntity()->GetRightDir()));
+	m_pCarDriverEntity = driverEntity;
+}
+
+void CCarPlayer::ReleaseDriver()
+{
+	GetEntity()->DetachAll();
+	CPlayerController::Get()->SetControlledPawn(m_pCarDriverEntity->GetComponent<CAlexPlayer>());
+	m_pCarDriverEntity = nullptr;
+}
+
 void CCarPlayer::OnForward(int activationMode, float value)
 {
 	if (activationMode == eAAM_OnPress)
@@ -194,14 +208,9 @@ void CCarPlayer::OnPitchDeltaXIRight(int activationMode, float value)
 
 void CCarPlayer::OnEnter(int activationMode, float value)
 {
-	if (activationMode == eAAM_OnPress && CPlayerController::Get()->GetControlledPawn() == this)
+	if (activationMode == eAAM_OnPress)
 	{
-		//IEntity* pEntity = CPlayerController::Get()->GetAlexEntity();
-		//pEntity->SetPosRotScale(m_pEntity->GetWorldPos() + Vec3(0, 0, 2.f), m_pEntity->GetRotation(), Vec3(1));
-		//if (pEntity)
-		//{
-		//	CPlayerController::Get()->SetControlledPawn(pEntity->GetComponent<CAlexPlayer>());
-		//}
+		ReleaseDriver();
 	}
 }
 

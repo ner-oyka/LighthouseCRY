@@ -1,4 +1,4 @@
-// Copyright 2001-2019 Crytek GmbH / Crytek Group. All rights reserved.
+//Deer Solar Games | 2021 | Lighthouse project
 
 #pragma once
 

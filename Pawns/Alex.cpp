@@ -598,6 +598,15 @@ void CAlexPlayer::OnEnter(int activationMode, float value)
 	if (activationMode == eAAM_OnPress)
 	{
 		CPlayerController::Get()->GetAssistant()->GetComponent<CAssistantComponent>()->SendEventBehaviorTree("ToPlayer");
+
+
+		//Test car
+		IEntity* carEntity = gEnv->pEntitySystem->FindEntityByName("entities::car_base-1");
+		if (carEntity)
+		{
+			carEntity->GetComponent<CCarPlayer>()->SetDriver(GetEntity());
+			CPlayerController::Get()->SetControlledPawn(carEntity->GetComponent<CCarPlayer>());
+		}
 	}
 }
 

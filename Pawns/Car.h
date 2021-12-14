@@ -1,3 +1,5 @@
+//Deer Solar Games | 2021 | Lighthouse project
+
 #pragma once
 
 #include <DefaultComponents/Physics/Vehicles/VehicleComponent.h>
@@ -30,6 +32,9 @@ public:
 	float GetThrottle();
 	float GetFootBrake();
 
+	void SetDriver(IEntity* driverEntity);
+	void ReleaseDriver();
+
 private:
 	//IInputEvents
 	virtual void OnForward(int activationMode, float value) override;
@@ -52,4 +57,6 @@ private:
 
 private:
 	Cry::DefaultComponents::CVehiclePhysicsComponent* m_pVehiclePhysics = nullptr;
+
+	IEntity* m_pCarDriverEntity = nullptr;
 };

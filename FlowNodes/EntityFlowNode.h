@@ -1,5 +1,5 @@
-// CryEngine Source File
-// Copyright (C), Crytek, 1999-2019
+//Deer Solar Games | 2021 | Lighthouse project
+
 #pragma once
 
 #include <CryFlowGraph/IFlowBaseNode.h>

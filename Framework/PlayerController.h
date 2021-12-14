@@ -1,3 +1,5 @@
+//Deer Solar Games | 2021 | Lighthouse project
+
 #pragma once
 
 #include <CryEntitySystem/IEntityComponent.h>
@@ -65,7 +67,4 @@ private:
 	IEntity* m_pAssistant = nullptr;
 
 	static CPlayerController* m_pInstance;
-
-	//Test UI
-	IUIElement* m_pGoldenRatio = nullptr;
 };

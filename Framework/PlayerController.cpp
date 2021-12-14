@@ -46,22 +46,6 @@ void CPlayerController::Initialize()
 		AlexSpawn();
 		AssistantSpawn();
 	}
-
-
-
-	//Test UI
-	//if (gEnv->pFlashUI)
-	//{
-	//	m_pGoldenRatio = gEnv->pFlashUI->GetUIElement("SubtitlesMain");
-	//	if (m_pGoldenRatio)
-	//	{
-	//		m_pGoldenRatio->Init();
-	//		m_pGoldenRatio->SetVisible(true);
-	//		SUIArguments args;
-	//		args.AddArgument("@open_door");
-	//		m_pGoldenRatio->CallFunction("SetText", args);
-	//	}
-	//}
 }
 
 Cry::Entity::EventFlags CPlayerController::GetEventMask() const
