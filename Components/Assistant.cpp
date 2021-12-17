@@ -37,6 +37,11 @@ static void RegisterAssistantComponent(Schematyc::IEnvRegistrar& registrar)
 
 CRY_STATIC_AUTO_REGISTER_FUNCTION(&RegisterAssistantComponent)
 
+CAssistantComponent::~CAssistantComponent()
+{
+	GameEvents::CPawnEvents::Get()->Unsubscribe(this);
+}
+
 void CAssistantComponent::Initialize()
 {
 	m_pCharacterController = GetEntity()->GetComponent<Cry::DefaultComponents::CCharacterControllerComponent>();
@@ -98,30 +103,13 @@ void CAssistantComponent::ProcessEvent(const SEntityEvent& event)
 	break;
 	case Cry::Entity::EEvent::GameplayStarted:
 	{
+		GameEvents::CPawnEvents::Get()->Subscribe(this);
+
 		m_playerEntity = CPlayerController::Get()->GetControlledPawn()->GetEntity();
 		p_DRSActor = gEnv->pDynamicResponseSystem->CreateResponseActor("Assistant", GetEntityId());
 
 		InitializeEngineBones();
-
-
-		//Create flashlight and attach to bone
-		SEntitySpawnParams flashLightSpawnParams;
-
-		flashLightSpawnParams.pClass = gEnv->pEntitySystem->GetClassRegistry()->FindClass(m_flashlightClass.value);
-		flashLightSpawnParams.vPosition = Vec3(0, 0, 0);
-
-		m_pFlashlightEntity = gEnv->pEntitySystem->SpawnEntity(flashLightSpawnParams);
-
-		if (ICharacterInstance* pCharacter = m_pAnimationMeshComponent->GetCharacter())
-		{
-			if (IAttachment* pAttachment = pCharacter->GetIAttachmentManager()->GetInterfaceByName("flashlight"))
-			{
-				CEntityAttachment* pFlashLightAttachmentObject = new CEntityAttachment();
-				pFlashLightAttachmentObject->SetEntityId(m_pFlashlightEntity->GetId());
-				pAttachment->AddBinding(pFlashLightAttachmentObject);
-			}
-		}
-
+		CreateFlashlight();
 	}
 	break;
 	}
@@ -400,4 +388,30 @@ Quat CAssistantComponent::RandomLook()
 	}
 
 	return m_currentRandomLookRotation;
+}
+
+//Create flashlight and attach to bone
+void CAssistantComponent::CreateFlashlight()
+{
+	SEntitySpawnParams flashLightSpawnParams;
+
+	flashLightSpawnParams.pClass = gEnv->pEntitySystem->GetClassRegistry()->FindClass(m_flashlightClass.value);
+	flashLightSpawnParams.vPosition = Vec3(0, 0, 0);
+
+	m_pFlashlightEntity = gEnv->pEntitySystem->SpawnEntity(flashLightSpawnParams);
+
+	if (ICharacterInstance* pCharacter = m_pAnimationMeshComponent->GetCharacter())
+	{
+		if (IAttachment* pAttachment = pCharacter->GetIAttachmentManager()->GetInterfaceByName("flashlight"))
+		{
+			CEntityAttachment* pFlashLightAttachmentObject = new CEntityAttachment();
+			pFlashLightAttachmentObject->SetEntityId(m_pFlashlightEntity->GetId());
+			pAttachment->AddBinding(pFlashLightAttachmentObject);
+		}
+	}
+}
+
+void CAssistantComponent::OnStartSelectTargetForAssistant()
+{
+	CryLog("START SELECT");
 }

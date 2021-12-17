@@ -27,7 +27,8 @@ namespace Game
 		LookAt = 1,
 		ViewControl = 2,
 		ThirdPerson = 3,
-		TransformControl = 4
+		TransformControl = 4,
+		Car = 5
 	};
 
 	static void ReflectType(Schematyc::CTypeDesc<ECameraType>& desc)
@@ -85,6 +86,10 @@ public:
 		desc.AddMember(&CCameraControllerComponent::m_fieldOfViewExamine, 'fove', "FoVExamine", "FoV Examine", "..", 45.f);
 	}
 
+	static CCameraControllerComponent* Get() { return m_pInstance; }
+
+	void SetType(Game::ECameraType type) { cameraType = type; }
+
 private:
 	void UpdateCamera();
 	void UpdateInputs();
@@ -134,6 +139,8 @@ private:
 
 	Schematyc::CSharedString m_cameraRootName = "_root";
 	IEntity* m_pCameraRootEntity{ nullptr };
+
+	static CCameraControllerComponent* m_pInstance;
 
 private:
 	Ang3 GetRotationDelta();

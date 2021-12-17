@@ -21,14 +21,42 @@
 
 #include "Framework/IPawn.h"
 
+// SIGNALS
+struct SSetDrivingSignal
+{
+	SSetDrivingSignal() = default;
+};
+
+struct SReleaseDrivingSignal
+{
+	SReleaseDrivingSignal() = default;
+};
+
+struct SStartResearchTargetingSignal
+{
+	SStartResearchTargetingSignal() = default;
+};
+struct SStopResearchTargetingSignal
+{
+	SStopResearchTargetingSignal() = default;
+};
+struct SDeathSignal
+{
+	SDeathSignal() = default;
+};
+
 ////////////////////////////////////////////////////////
 // Represents a player participating in gameplay
 ////////////////////////////////////////////////////////
 class CAlexPlayer final : public IPawn
 {
 public:
+
+	/// <summary>
+	/// Constructors
+	/// </summary>
 	CAlexPlayer() = default;
-	virtual ~CAlexPlayer() override final { };
+	virtual ~CAlexPlayer() override final;
 
 	// IEntityComponent
 	virtual void Initialize() override;
@@ -42,9 +70,9 @@ public:
 		desc.SetGUID("{63F4C0C6-32AF-4ACB-8FB0-57D45DD14725}"_cry_guid);
 		desc.AddMember(&CAlexPlayer::m_isMovement, 'ismv', "IsMovement", "Is Movement", "Alex is movement.", true);
 		desc.AddMember(&CAlexPlayer::m_isFight, 'isft', "IsFight", "Is Fight", "Alex join to fight.", false);
-		desc.AddMember(&CAlexPlayer::m_isDeath, 'isdt', "IsDeath", "Is Death", "Alex death.", false);
-		desc.AddMember(&CAlexPlayer::m_isResearchTargeting, 'rstg', "IsResearchTargeting", "Is Research Targeting", "ResearchTargeting.", false);
 	}
+
+	void GetOutTransport();
 
 	void PhysicalizeDeath();
 	void UpdateMovement();
@@ -63,6 +91,7 @@ public:
 	void RemoveTargetMeshToAssistant();
 	void SpawnMeshTargetForAssistant();
 
+	//Cursor target for assistant
 	void SpawnCursorEntity();
 	void RemoveCursorEntity();
 	void UpdateCursor();
@@ -75,6 +104,9 @@ public:
 private:
 	Quat RandomLookAt();
 
+	template <class T>
+	void SendSchematycSignal(const T& event);
+
 protected:
 	Cry::DefaultComponents::CCharacterControllerComponent* m_pCharacterController = nullptr;
 	Cry::DefaultComponents::CAdvancedAnimationComponent* m_pAnimationComponent = nullptr;
@@ -84,6 +116,7 @@ protected:
 	FragmentID m_walkFragmentId;
 	TagID m_rotateTagId;
 	TagID m_crouchTagId;
+	TagID m_rifleTagId;
 
 	Vec2 m_mouseDeltaRotation;
 
@@ -118,8 +151,6 @@ protected:
 	//States
 	bool m_isMovement = true;	//Движение
 	bool m_isFight = false;		//Бой
-	bool m_isSwim = false;		//Плавание
-	bool m_isDeath = false;		//Смерть
 	bool m_isResearchTargeting = false;	//Режим выбора цели для изучения ассистентом
 
 	//Cover system
@@ -163,4 +194,6 @@ private:
 
 	virtual void OnXI_A(int activationMode, float value) override;
 	virtual void OnTriggerXIRight(int activationMode, float value) override;
+
+	virtual void OnF(int activationMode, float value) override;
 };

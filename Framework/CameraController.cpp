@@ -27,10 +27,23 @@ static void RegisterCameraControllerComponent(Schematyc::IEnvRegistrar& registra
 		}
 	}
 }
+
+CCameraControllerComponent* CCameraControllerComponent::m_pInstance = nullptr;
+
 CRY_STATIC_AUTO_REGISTER_FUNCTION(&RegisterCameraControllerComponent)
 
 void CCameraControllerComponent::Initialize()
 {
+	if (m_pInstance)
+	{
+		if (m_pInstance->m_pEntity == m_pEntity)
+			return;
+
+		CryWarning(VALIDATOR_MODULE_GAME, VALIDATOR_WARNING, "More than one camera controller is not allowed. Camera controller removed from entity '%s'.", m_pInstance->m_pEntity->GetName());
+		m_pInstance->m_pEntity->RemoveComponent<CCameraControllerComponent>();
+	}
+	m_pInstance = this;
+
 	m_pCameraComponent = m_pEntity->GetOrCreateComponent<Cry::DefaultComponents::CCameraComponent>();
 }
 
@@ -82,6 +95,52 @@ void CCameraControllerComponent::ProcessEvent(const SEntityEvent& event)
 
 void CCameraControllerComponent::UpdateCamera()
 {
+	if (cameraType == Game::ECameraType::Car)
+	{
+		// Car update camera
+		Vec3 playerPos = CPlayerController::Get()->GetControlledPawn()->GetEntity()->GetWorldPos();
+		Matrix34 m_cameraMatrix;
+
+		m_viewPitch += (GetMousePitchDelta() + GetXiPitchDelta()) * 4.f;
+		m_viewPitch = clamp_tpl(m_viewPitch, DEG2RAD(m_pitchMin * -1.0f), DEG2RAD(m_pitchMax));
+		m_viewYaw += (GetMouseYawDelta() - GetXiYawDelta()) * 4.f;
+
+		if (m_viewYaw > gf_PI)
+			m_viewYaw -= gf_PI2;
+		if (m_viewYaw < -gf_PI)
+			m_viewYaw += gf_PI2;
+
+
+		Quat quatPreTransYP = Quat(Ang3(m_viewPitch, 0.0f, m_viewYaw));
+
+
+		Interpolate(m_rightOffset, m_newRightOffset, 1, gEnv->pTimer->GetFrameTime());
+		Vec3 rightOffset = GetEntity()->GetForwardDir().cross(Vec3(0.f, 0.f, 1.f)).GetNormalized() * m_rightOffset;
+
+		Vec3 vecTargetAimPosition = playerPos + Vec3(0.f, 0.f, 1.7f);
+
+		Quat quatTargetRotationGoal = m_quatTargetRotation * quatPreTransYP;
+		Quat quatTargetRotation = Quat::CreateSlerp(m_quatLastTargetRotation, quatTargetRotationGoal, gEnv->pTimer->GetFrameTime() * 7.0f);
+		m_quatLastTargetRotation = quatTargetRotation;
+
+		Vec3 vecViewPosition = vecTargetAimPosition + (quatTargetRotation * (FORWARD_DIRECTION * 7.0f));
+
+		Quat quatViewRotationGoal = Quat::CreateRotationVDir((vecTargetAimPosition - vecViewPosition).GetNormalizedSafe());
+		Quat quatViewRotation = Quat::CreateSlerp(m_quatLastViewRotation, quatViewRotationGoal, gEnv->pTimer->GetFrameTime() * 50.f);
+		m_quatLastViewRotation = quatViewRotation;
+
+		Quat quatOrbitRotation = quatViewRotation;
+
+		CollisionDetection(vecTargetAimPosition, vecViewPosition);
+
+		m_vecLastPosition = vecViewPosition;
+		m_cameraMatrix = Matrix34::Create(Vec3(1.0f), quatOrbitRotation, vecViewPosition);
+
+		m_pEntity->SetLocalTM(m_cameraMatrix);
+
+		return;
+	}
+
 	if (cameraType == Game::ECameraType::ThirdPerson)
 	{
 		// Third Person update camera
@@ -101,16 +160,16 @@ void CCameraControllerComponent::UpdateCamera()
 		Quat quatPreTransYP = Quat(Ang3(m_viewPitch, 0.0f, m_viewYaw));
 
 
-		Interpolate(m_rightOffset, m_newRightOffset, 1, gEnv->pTimer->GetFrameTime());
+		Interpolate(m_rightOffset, m_newRightOffset, 6, gEnv->pTimer->GetFrameTime());
 		Vec3 rightOffset = GetEntity()->GetForwardDir().cross(Vec3(0.f, 0.f, 1.f)).GetNormalized() * m_rightOffset;
 				
-		Vec3 vecTargetAimPosition = playerPos + Vec3(0.f, 0.f, 1.7f) + rightOffset;
+		Vec3 vecTargetAimPosition = playerPos + Vec3(0.f, 0.f, 1.55f) + rightOffset;
 
 		Quat quatTargetRotationGoal = m_quatTargetRotation * quatPreTransYP;
 		Quat quatTargetRotation = Quat::CreateSlerp(m_quatLastTargetRotation, quatTargetRotationGoal, gEnv->pTimer->GetFrameTime() * 7.0f);
 		m_quatLastTargetRotation = quatTargetRotation;
 
-		Interpolate(m_cameraDistanceThirdPerson, m_newCameraDistanceThirdPerson, 2, gEnv->pTimer->GetFrameTime());
+		Interpolate(m_cameraDistanceThirdPerson, m_newCameraDistanceThirdPerson, 6, gEnv->pTimer->GetFrameTime());
 
 		Vec3 vecViewPosition = vecTargetAimPosition + (quatTargetRotation * (FORWARD_DIRECTION * m_cameraDistanceThirdPerson));
 
@@ -128,7 +187,7 @@ void CCameraControllerComponent::UpdateCamera()
 		m_pEntity->SetLocalTM(m_cameraMatrix);
 
 		//FOV
-		Interpolate(m_fieldOfView, m_newFieldOfView, 2, gEnv->pTimer->GetFrameTime());
+		Interpolate(m_fieldOfView, m_newFieldOfView, 6, gEnv->pTimer->GetFrameTime());
 		m_pCameraComponent->SetFieldOfView(CryTransform::CAngle::FromDegrees(m_fieldOfView));
 
 		return;
@@ -334,7 +393,7 @@ void CCameraControllerComponent::OnMouseButtonRight(int activationMode, float va
 	{
 		m_saveCameraDistanceThirdPerson = m_newCameraDistanceThirdPerson;
 		m_newCameraDistanceThirdPerson = 2.0f;
-		m_newRightOffset = 0.5f;
+		m_newRightOffset = 0.6f;
 		m_newFieldOfView = m_fieldOfViewExamine;
 	}
 
@@ -352,7 +411,7 @@ void CCameraControllerComponent::OnTriggerXIRight(int activationMode, float valu
 	{
 		m_saveCameraDistanceThirdPerson = m_newCameraDistanceThirdPerson;
 		m_newCameraDistanceThirdPerson = 2.0f;
-		m_newRightOffset = 0.5f;
+		m_newRightOffset = 0.6f;
 		m_newFieldOfView = m_fieldOfViewExamine;
 	}
 	else

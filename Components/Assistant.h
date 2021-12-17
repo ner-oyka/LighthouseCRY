@@ -11,11 +11,13 @@
 
 #include <DefaultComponents/Lights/ProjectorLightComponent.h>
 
-class CAssistantComponent final : public IEntityComponent
+#include "Framework/Events/PawnEvents.h"
+
+class CAssistantComponent final : public IEntityComponent, public GameEvents::IPawnEvents
 {
 public:
 	CAssistantComponent() = default;
-	virtual ~CAssistantComponent() = default;
+	virtual ~CAssistantComponent();
 
 	virtual void Initialize() override;
 	virtual ComponentEventPriority GetEventPriority() const override final;
@@ -61,6 +63,8 @@ private:
 
 	Quat RandomLook();
 
+	void CreateFlashlight();
+
 private:
 	Cry::DefaultComponents::CCharacterControllerComponent* m_pCharacterController = nullptr;
 	IEntityNavigationComponent* m_pNavigationAgent = nullptr;
@@ -104,4 +108,9 @@ private:
 
 	//Check stuck
 	Vec3 m_lastReachablePosition = ZERO;
+
+private:
+	//Pawn Events
+	virtual void OnStartSelectTargetForAssistant();
+	//Pawn Events
 };

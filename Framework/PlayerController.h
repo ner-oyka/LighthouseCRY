@@ -6,6 +6,7 @@
 #include <CrySchematyc/ResourceTypes.h>
 #include <DefaultComponents/Cameras/CameraComponent.h>
 #include "IPawn.h"
+#include "UIManager.h"
 
 #include <FlashUI/FlashUI.h>
 
@@ -65,6 +66,8 @@ public:
 private:
 	IPawn* m_pControlledPawn = nullptr;
 	IEntity* m_pAssistant = nullptr;
+
+	CUIManager* m_pUIManager = nullptr;
 
 	static CPlayerController* m_pInstance;
 };

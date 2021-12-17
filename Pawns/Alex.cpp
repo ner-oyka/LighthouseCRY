@@ -7,9 +7,11 @@
 #include <CrySchematyc/Env/IEnvRegistrar.h>
 #include <CrySchematyc/Env/Elements/EnvComponent.h>
 #include <CrySchematyc/Env/Elements/EnvFunction.h>
+#include <CrySchematyc/Env/Elements/EnvSignal.h>
 #include <CrySchematyc/IObject.h>
 #include <CryCore/StaticInstanceList.h>
 #include "Framework/PlayerController.h"
+#include "Framework/CameraController.h"
 #include "Components/Assistant.h"
 
 #include <CryPhysics\physinterface.h>
@@ -22,6 +24,41 @@
 
 #include "Car.h"
 
+#include "Framework/Events/PawnEvents.h"
+
+// REGISTER SIGNALS
+void ReflectType(Schematyc::CTypeDesc<SSetDrivingSignal>& desc)
+{
+	desc.SetGUID("{CA46E001-1171-414B-A6E5-B114052CC01A}"_cry_guid);
+	desc.SetLabel("OnSetDriving");
+}
+
+void ReflectType(Schematyc::CTypeDesc<SReleaseDrivingSignal>& desc)
+{
+	desc.SetGUID("{89816BE9-63D9-4466-92CD-D0657DB3C11D}"_cry_guid);
+	desc.SetLabel("OnReleaseDriving");
+}
+
+void ReflectType(Schematyc::CTypeDesc<SStartResearchTargetingSignal>& desc)
+{
+	desc.SetGUID("{651EADE6-C679-4C70-BE0A-F6E6D63BF220}"_cry_guid);
+	desc.SetLabel("OnStartResearchTargeting");
+}
+
+void ReflectType(Schematyc::CTypeDesc<SStopResearchTargetingSignal>& desc)
+{
+	desc.SetGUID("{848B9A7B-79CA-4D4A-A72B-73BF16DE154B}"_cry_guid);
+	desc.SetLabel("OnStopResearchTargeting");
+}
+
+void ReflectType(Schematyc::CTypeDesc<SDeathSignal>& desc)
+{
+	desc.SetGUID("{00D15660-8129-41DD-A160-D309C029A6ED}"_cry_guid);
+	desc.SetLabel("OnDeath");
+}
+
+
+// REGISTER COMPONENT
 static void RegisterAlexPlayer(Schematyc::IEnvRegistrar& registrar)
 {
 	Schematyc::CEnvRegistrationScope scope = registrar.Scope(IEntity::GetEntityScopeGUID());
@@ -60,10 +97,28 @@ static void RegisterAlexPlayer(Schematyc::IEnvRegistrar& registrar)
 			auto pFunction = SCHEMATYC_MAKE_ENV_FUNCTION(&CAlexPlayer::CheckCover, "{83CB6FCB-06E7-4C3E-BEE2-4E7E3E44F507}"_cry_guid, "CheckCover");
 			componentScope.Register(pFunction);
 		}
+		{
+			auto pFunction = SCHEMATYC_MAKE_ENV_FUNCTION(&CAlexPlayer::UpdateLookAt, "{1D05E914-AF31-4430-96A6-0D1EF3E01981}"_cry_guid, "UpdateLookAt");
+			componentScope.Register(pFunction);
+		}
+
+		//Signals
+		{
+			componentScope.Register(SCHEMATYC_MAKE_ENV_SIGNAL(SSetDrivingSignal));
+			componentScope.Register(SCHEMATYC_MAKE_ENV_SIGNAL(SReleaseDrivingSignal));
+			componentScope.Register(SCHEMATYC_MAKE_ENV_SIGNAL(SStartResearchTargetingSignal));
+			componentScope.Register(SCHEMATYC_MAKE_ENV_SIGNAL(SStopResearchTargetingSignal));
+			componentScope.Register(SCHEMATYC_MAKE_ENV_SIGNAL(SDeathSignal));
+		}
 	}
 }
 
 CRY_STATIC_AUTO_REGISTER_FUNCTION(&RegisterAlexPlayer);
+
+CAlexPlayer::~CAlexPlayer()
+{
+	ReleaseInputs();
+}
 
 void CAlexPlayer::Initialize()
 {
@@ -108,6 +163,7 @@ void CAlexPlayer::Initialize()
 	m_walkFragmentId = m_pAnimationComponent->GetFragmentId("Walk");
 	m_rotateTagId = m_pAnimationComponent->GetTagId("Rotate");
 	m_crouchTagId = m_pAnimationComponent->GetTagId("Crouch");
+	m_rifleTagId = m_pAnimationComponent->GetTagId("Rifle");
 
 	m_pAnimationComponent->ResetCharacter();
 
@@ -156,7 +212,7 @@ void CAlexPlayer::ProcessEvent(const SEntityEvent& event)
 
 	case Cry::Entity::EEvent::PrePhysicsUpdate:
 	{
-		UpdateLookAt();
+
 	}
 	break;
 
@@ -190,13 +246,9 @@ void CAlexPlayer::ProcessEvent(const SEntityEvent& event)
 			}
 
 			//temp
-			if (relativeContactVelocity2.len2() > 13.0f && contactMass > 45)
+			if (relativeContactVelocity2.len2() > 13.0f && contactMass > 45 || relativeContactVelocity2.len2() > 53.0f && contactMass > 3)
 			{
-				m_isDeath = true;
-			}
-			if (relativeContactVelocity2.len2() > 53.0f && contactMass > 3)
-			{
-				m_isDeath = true;
+				SendSchematycSignal(SDeathSignal());
 			}
 
 			//CryLog("impulse: %f, %f, %f", relativeContactVelocity.x, relativeContactVelocity.y, relativeContactVelocity.z);
@@ -401,6 +453,15 @@ Quat CAlexPlayer::RandomLookAt()
 	return m_currentRandomLookRotation;
 }
 
+template <class T>
+void CAlexPlayer::SendSchematycSignal(const T& event)
+{
+	if (Schematyc::IObject* pSchematycObject = GetEntity()->GetSchematycObject())
+	{
+		pSchematycObject->ProcessSignal(event, GetGUID());
+	}
+}
+
 void CAlexPlayer::UpdateAnimation()
 {
 	Interpolate(m_speed, m_newSpeed, 2, gEnv->pTimer->GetFrameTime());
@@ -551,6 +612,14 @@ void CAlexPlayer::OnMouseButtonLeft(int activationMode, float value)
 {
 	if (activationMode == eAAM_OnPress)
 	{
+		//todo
+	}
+}
+
+void CAlexPlayer::OnF(int activationMode, float value)
+{
+	if (activationMode == eAAM_OnPress)
+	{
 		if (m_isResearchTargeting)
 		{
 			SpawnMeshTargetForAssistant();
@@ -563,13 +632,21 @@ void CAlexPlayer::OnMouseButtonRight(int activationMode, float value)
 {
 	if (activationMode == eAAM_OnPress)
 	{
+		SendSchematycSignal(SStartResearchTargetingSignal());
 		m_isResearchTargeting = true;
-		SpawnCursorEntity();
+		//SpawnCursorEntity();
+		GameEvents::CPawnEvents::Get()->SendEvent(GameEvents::EPawnEvent::Assistant_StartSelectTarget);
+
+		m_pAnimationComponent->SetTagWithId(m_rifleTagId, true);
 	}
 	if (activationMode == eAAM_OnRelease)
 	{
+		SendSchematycSignal(SStopResearchTargetingSignal());
 		m_isResearchTargeting = false;
-		RemoveCursorEntity();
+		//RemoveCursorEntity();
+		GameEvents::CPawnEvents::Get()->SendEvent(GameEvents::EPawnEvent::Assistant_ReleaseSelectTarget);
+
+		m_pAnimationComponent->SetTagWithId(m_rifleTagId, false);
 	}
 }
 
@@ -601,9 +678,12 @@ void CAlexPlayer::OnEnter(int activationMode, float value)
 
 
 		//Test car
-		IEntity* carEntity = gEnv->pEntitySystem->FindEntityByName("entities::car_base-1");
+		IEntity* carEntity = gEnv->pEntitySystem->FindEntityByName("entities::car_test-1");
 		if (carEntity)
 		{
+			SendSchematycSignal(SSetDrivingSignal());
+
+			CCameraControllerComponent::Get()->SetType(Game::ECameraType::Car);
 			carEntity->GetComponent<CCarPlayer>()->SetDriver(GetEntity());
 			CPlayerController::Get()->SetControlledPawn(carEntity->GetComponent<CCarPlayer>());
 		}
@@ -626,14 +706,23 @@ void CAlexPlayer::OnTriggerXIRight(int activationMode, float value)
 {
 	if (value > 0 && m_isResearchTargeting == false)
 	{
+		SendSchematycSignal(SStartResearchTargetingSignal());
 		m_isResearchTargeting = true;
-		SpawnCursorEntity();
+		//SpawnCursorEntity();
+		GameEvents::CPawnEvents::Get()->SendEvent(GameEvents::EPawnEvent::Assistant_StartSelectTarget);
 	}
 	else if (value == 0)
 	{
+		SendSchematycSignal(SStopResearchTargetingSignal());
 		m_isResearchTargeting = false;
-		RemoveCursorEntity();
+		//RemoveCursorEntity();
+		GameEvents::CPawnEvents::Get()->SendEvent(GameEvents::EPawnEvent::Assistant_ReleaseSelectTarget);
 	}
+}
+
+void CAlexPlayer::GetOutTransport()
+{
+	SendSchematycSignal(SReleaseDrivingSignal());
 }
 
 void CAlexPlayer::PhysicalizeDeath()
@@ -732,33 +821,20 @@ void CAlexPlayer::UpdateFightMovement()
 			QuatT relMove = skeletonAnim.GetRelMovement();
 			Vec3 vel = skeletonAnim.GetCurrentVelocity();
 
-			vel = relMove.q * vel;
+			vel = movementRequest;
 
-			m_pCharacterController->SetVelocity(m_pEntity->GetRotation() * vel);
+			m_pCharacterController->SetVelocity(vel * 2.5f);
 		}
 
 
-		if (m_pCursorEntity == nullptr)
-		{
-			return;
-		}
+		Quat rot = Quat::CreateRotationVDir(systemCamera.GetViewdir());
+		rot.v.x = 0;
+		rot.v.y = 0;
 
-		Vec3 dir = m_pCursorEntity->GetWorldPos() - m_pEntity->GetWorldPos();
-		dir = dir.Normalize();
-		Quat newRotation = Quat::CreateRotationVDir(dir);
-		Ang3 ypr = CCamera::CreateAnglesYPR(Matrix33(newRotation));
-		ypr.y = 0;
-		ypr.z = 0;
-		newRotation = Quat(CCamera::CreateOrientationYPR(ypr));
-		newRotation = Quat::CreateSlerp(m_pEntity->GetRotation(), newRotation, gEnv->pTimer->GetFrameTime() * 15.f);
+		Quat lastRot = m_pEntity->GetRotation();
+		Quat qResult = Quat::CreateSlerp(lastRot, rot, gEnv->pTimer->GetFrameTime() * 15.f);
 
-		m_pEntity->SetRotation(newRotation);
-
-
-		//test		
-		//IPersistantDebug* pDebug = gEnv->pGameFramework->GetIPersistantDebug();
-		//pDebug->Begin("CHPlayerDebug", false);
-		//pDebug->Add2DText(string().Format("vel: %f, %f, %f", vel.x, vel.y, vel.z).c_str(), 1.5f, ColorF(0.2f, 0.7f, 0.2f), gEnv->pTimer->GetFrameTime());
+		GetEntity()->SetRotation(qResult);
 	}
 }
 
@@ -822,3 +898,4 @@ Vec3 CAlexPlayer::GetXiMovement(const Quat& baseRotation)
 	}
 	return ZERO;
 }
+

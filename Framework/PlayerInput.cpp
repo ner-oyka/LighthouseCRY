@@ -71,4 +71,7 @@ void CPlayerInput::RegisterActionMaps(IEntity* inputListener)
 
 	m_pInputComponent->RegisterAction("input", "left_ctrl", [this](int activationMode, float value) {ObserverManager::notify(&IInputEvents::OnCtrlLeft, activationMode, value); });
 	m_pInputComponent->BindAction("input", "left_ctrl", eAID_KeyboardMouse, EKeyId::eKI_LCtrl);
+
+	m_pInputComponent->RegisterAction("input", "key_f", [this](int activationMode, float value) {ObserverManager::notify(&IInputEvents::OnF, activationMode, value); });
+	m_pInputComponent->BindAction("input", "key_f", eAID_KeyboardMouse, EKeyId::eKI_F);
 }

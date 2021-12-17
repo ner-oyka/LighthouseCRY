@@ -8,7 +8,12 @@
 struct IPawn : public IEntityComponent, public IInputEvents
 {
 	IPawn() { }
-	~IPawn() { ObserverManager::unsubscribe(this); }
+	~IPawn() { }
+
+	void ReleaseInputs()
+	{
+		ObserverManager::unsubscribe(this);
+	}
 
 	void HandleInputFlagChange(TInputFlags flags, int activationMode, EInputFlagType type = EInputFlagType::Hold)
 	{

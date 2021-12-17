@@ -46,6 +46,8 @@ void CPlayerController::Initialize()
 		AlexSpawn();
 		AssistantSpawn();
 	}
+
+	m_pUIManager = new CUIManager();
 }
 
 Cry::Entity::EventFlags CPlayerController::GetEventMask() const

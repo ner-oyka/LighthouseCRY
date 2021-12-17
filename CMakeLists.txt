@@ -33,13 +33,11 @@ add_sources("Components_uber.cpp"
     SOURCE_GROUP "Components"
 		"Components/AreaTrigger.cpp"
 		"Components/Assistant.cpp"
-		"Components/CameraController.cpp"
 		"Components/CinematicTrigger.cpp"
 		"Components/ClearAllComponents.cpp"
 		"Components/SpawnPoint.cpp"
 		"Components/AreaTrigger.h"
 		"Components/Assistant.h"
-		"Components/CameraController.h"
 		"Components/CinematicTrigger.h"
 		"Components/ClearAllComponents.h"
 		"Components/Item.h"
@@ -78,11 +76,23 @@ add_sources("Framework_uber.cpp"
     PROJECTS Game
     SOURCE_GROUP "Framework"
 		"Framework/PlayerController.cpp"
+        "Framework/CameraController.cpp"
 		"Framework/PlayerInput.cpp"
+		"Framework/UIManager.cpp"
 		"Framework/IPawn.h"
 		"Framework/PlayerController.h"
+        "Framework/CameraController.h"
 		"Framework/PlayerInput.h"
+		"Framework/UIManager.h"
 )
+
+add_sources("Events_uber.cpp"
+    PROJECTS Game
+    SOURCE_GROUP "Framework\\\\Events"
+		"Framework/Events/PawnEvents.cpp"
+		"Framework/Events/PawnEvents.h"
+)
+
 add_sources("Pawns_uber.cpp"
     PROJECTS Game
     SOURCE_GROUP "Pawns"

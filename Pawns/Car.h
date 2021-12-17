@@ -3,6 +3,8 @@
 #pragma once
 
 #include <DefaultComponents/Physics/Vehicles/VehicleComponent.h>
+#include <DefaultComponents/Physics/Vehicles/WheelComponent.h>
+#include <DefaultComponents/Geometry/AdvancedAnimationComponent.h>
 
 #include "Framework/IPawn.h"
 
@@ -10,10 +12,11 @@ class CCarPlayer final : public IPawn
 {
 public:
 	CCarPlayer() = default;
-	virtual ~CCarPlayer() override final {};
+	virtual ~CCarPlayer() override final;
 
 	// IEntityComponent
 	virtual void Initialize() override;
+	virtual ComponentEventPriority GetEventPriority() const override final;
 	virtual Cry::Entity::EventFlags GetEventMask() const override;
 	virtual void ProcessEvent(const SEntityEvent & event) override;
 	// ~IEntityComponent
@@ -34,6 +37,10 @@ public:
 
 	void SetDriver(IEntity* driverEntity);
 	void ReleaseDriver();
+
+private:
+	void InitializeWheels();
+	void UpdateWheels();
 
 private:
 	//IInputEvents
@@ -57,6 +64,14 @@ private:
 
 private:
 	Cry::DefaultComponents::CVehiclePhysicsComponent* m_pVehiclePhysics = nullptr;
+	Cry::DefaultComponents::CAdvancedAnimationComponent* m_pAnimationComponent = nullptr;
 
 	IEntity* m_pCarDriverEntity = nullptr;
+
+	DynArray<Cry::DefaultComponents::CWheelComponent*> m_pWheelsComponents;
+
+	//Animate wheels
+	IAnimationOperatorQueuePtr m_poseWheelsModifier;
+
+	bool m_bNeutral = false;
 };
