@@ -18,6 +18,12 @@ namespace GameEvents
 		case GameEvents::EPawnEvent::Assistant_ReleaseSelectTarget:
 			ObserverManager::notify(&IPawnEvents::OnReleaseSelectTargetForAssistant);
 			break;
+		case GameEvents::EPawnEvent::Pawn_StartFight:
+			ObserverManager::notify(&IPawnEvents::OnPawnStartFight);
+			break;
+		case GameEvents::EPawnEvent::Pawn_ReleaseFight:
+			ObserverManager::notify(&IPawnEvents::OnPawnReleaseFight);
+			break;
 		default:
 			break;
 		}

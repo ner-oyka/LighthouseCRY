@@ -36,13 +36,27 @@ add_sources("Components_uber.cpp"
 		"Components/CinematicTrigger.cpp"
 		"Components/ClearAllComponents.cpp"
 		"Components/SpawnPoint.cpp"
+		"Components/Explosion.cpp"
 		"Components/AreaTrigger.h"
 		"Components/Assistant.h"
 		"Components/CinematicTrigger.h"
 		"Components/ClearAllComponents.h"
 		"Components/Item.h"
 		"Components/SpawnPoint.h"
+		"Components/Explosion.h"
 )
+
+add_sources("Weapons_uber.cpp"
+    PROJECTS Game
+    SOURCE_GROUP "Components\\\\Weapons"
+		"Components/Weapons/Projectile.cpp"
+		"Components/Weapons/Weapon.cpp"
+		"Components/Weapons/WeaponAttachment.cpp"
+		"Components/Weapons/Projectile.h"
+		"Components/Weapons/Weapon.h"
+		"Components/Weapons/WeaponAttachment.h"
+)
+
 add_sources("DRS_uber.cpp"
     PROJECTS Game
     SOURCE_GROUP "DRS"

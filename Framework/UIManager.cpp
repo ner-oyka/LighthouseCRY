@@ -34,3 +34,19 @@ void CUIManager::OnReleaseSelectTargetForAssistant()
 		m_pTargetElement->SetVisible(false);
 	}
 }
+
+void CUIManager::OnPawnStartFight()
+{
+	if (m_pTargetElement)
+	{
+		m_pTargetElement->SetVisible(true);
+	}
+}
+
+void CUIManager::OnPawnReleaseFight()
+{
+	if (m_pTargetElement)
+	{
+		m_pTargetElement->SetVisible(false);
+	}
+}

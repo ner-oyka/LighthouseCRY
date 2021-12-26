@@ -54,6 +54,13 @@ void CCarPlayer::ProcessEvent(const SEntityEvent& event)
 	{
 	case EEntityEvent::Update:
 	{	
+		//Is visible entity
+		//const CCamera& Camera = gEnv->pSystem->GetViewCamera();
+		//AABB aabb;
+		//GetEntity()->GetWorldBounds(aabb);
+		//const uint8 a = Camera.IsAABBVisible_FH(aabb);
+		//CryLog(string().Format("%i", a).c_str());
+
 		UpdateWheels();
 
 		if (m_bNeutral)

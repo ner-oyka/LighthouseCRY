@@ -44,6 +44,22 @@ struct SDeathSignal
 {
 	SDeathSignal() = default;
 };
+struct SStartFightSignal
+{
+	SStartFightSignal() = default;
+};
+struct SReleaseFightSignal
+{
+	SReleaseFightSignal() = default;
+};
+struct SStartFire
+{
+	SStartFire() = default;
+};
+struct SStopFire
+{
+	SStopFire() = default;
+};
 
 ////////////////////////////////////////////////////////
 // Represents a player participating in gameplay
@@ -69,7 +85,6 @@ public:
 	{
 		desc.SetGUID("{63F4C0C6-32AF-4ACB-8FB0-57D45DD14725}"_cry_guid);
 		desc.AddMember(&CAlexPlayer::m_isMovement, 'ismv', "IsMovement", "Is Movement", "Alex is movement.", true);
-		desc.AddMember(&CAlexPlayer::m_isFight, 'isft', "IsFight", "Is Fight", "Alex join to fight.", false);
 	}
 
 	void GetOutTransport();
@@ -85,6 +100,10 @@ public:
 
 	void UpdateLookAt();
 
+	void UpdateWeaponAim();
+	void EnableWeaponAim();
+	void DisableWeaponAim();
+
 	IEntity* FindCover();
 	void CheckCover();
 
@@ -99,7 +118,7 @@ public:
 
 	//Set states
 	void SetMovement(bool val) { m_isMovement = val; }
-	void SetFight(bool val) { m_isFight = val; }
+	void SetFight(bool val);
 
 private:
 	Quat RandomLookAt();
@@ -196,4 +215,6 @@ private:
 	virtual void OnTriggerXIRight(int activationMode, float value) override;
 
 	virtual void OnF(int activationMode, float value) override;
+
+	virtual void OnOne(int activationMode, float value) override;
 };

@@ -57,6 +57,29 @@ void ReflectType(Schematyc::CTypeDesc<SDeathSignal>& desc)
 	desc.SetLabel("OnDeath");
 }
 
+void ReflectType(Schematyc::CTypeDesc<SStartFightSignal>& desc)
+{
+	desc.SetGUID("{F03EF724-A25B-409F-A341-00878C9E41C1}"_cry_guid);
+	desc.SetLabel("OnStartFight");
+}
+
+void ReflectType(Schematyc::CTypeDesc<SReleaseFightSignal>& desc)
+{
+	desc.SetGUID("{36474E34-58C5-4068-874E-257AB89B340E}"_cry_guid);
+	desc.SetLabel("OnReleaseFight");
+}
+
+void ReflectType(Schematyc::CTypeDesc<SStartFire>& desc)
+{
+	desc.SetGUID("{4C3A4C61-D5E6-4DAD-8750-91E4E1FCA462}"_cry_guid);
+	desc.SetLabel("OnStartFire");
+}
+
+void ReflectType(Schematyc::CTypeDesc<SStopFire>& desc)
+{
+	desc.SetGUID("{34B7CD24-5D8E-4FAF-AFA0-7193DCBCF1CC}"_cry_guid);
+	desc.SetLabel("OnStopFire");
+}
 
 // REGISTER COMPONENT
 static void RegisterAlexPlayer(Schematyc::IEnvRegistrar& registrar)
@@ -101,6 +124,18 @@ static void RegisterAlexPlayer(Schematyc::IEnvRegistrar& registrar)
 			auto pFunction = SCHEMATYC_MAKE_ENV_FUNCTION(&CAlexPlayer::UpdateLookAt, "{1D05E914-AF31-4430-96A6-0D1EF3E01981}"_cry_guid, "UpdateLookAt");
 			componentScope.Register(pFunction);
 		}
+		{
+			auto pFunction = SCHEMATYC_MAKE_ENV_FUNCTION(&CAlexPlayer::EnableWeaponAim, "{61A40258-8AF9-4D4B-971A-04803C434D00}"_cry_guid, "EnableWeaponAim");
+			componentScope.Register(pFunction);
+		}
+		{
+			auto pFunction = SCHEMATYC_MAKE_ENV_FUNCTION(&CAlexPlayer::DisableWeaponAim, "{6D186412-F43A-4AD9-82F3-75CEF8D7162D}"_cry_guid, "DisableWeaponAim");
+			componentScope.Register(pFunction);
+		}
+		{
+			auto pFunction = SCHEMATYC_MAKE_ENV_FUNCTION(&CAlexPlayer::UpdateWeaponAim, "{5BB9C457-9F70-40EB-B5C5-4D4DF32B2B0E}"_cry_guid, "UpdateWeaponAim");
+			componentScope.Register(pFunction);
+		}
 
 		//Signals
 		{
@@ -109,6 +144,10 @@ static void RegisterAlexPlayer(Schematyc::IEnvRegistrar& registrar)
 			componentScope.Register(SCHEMATYC_MAKE_ENV_SIGNAL(SStartResearchTargetingSignal));
 			componentScope.Register(SCHEMATYC_MAKE_ENV_SIGNAL(SStopResearchTargetingSignal));
 			componentScope.Register(SCHEMATYC_MAKE_ENV_SIGNAL(SDeathSignal));
+			componentScope.Register(SCHEMATYC_MAKE_ENV_SIGNAL(SStartFightSignal));
+			componentScope.Register(SCHEMATYC_MAKE_ENV_SIGNAL(SReleaseFightSignal));
+			componentScope.Register(SCHEMATYC_MAKE_ENV_SIGNAL(SStartFire));
+			componentScope.Register(SCHEMATYC_MAKE_ENV_SIGNAL(SStopFire));
 		}
 	}
 }
@@ -181,7 +220,9 @@ void CAlexPlayer::Initialize()
 Cry::Entity::EventFlags CAlexPlayer::GetEventMask() const
 {
 	return
-		Cry::Entity::EEvent::Update | Cry::Entity::EEvent::Reset | Cry::Entity::EEvent::PrePhysicsUpdate | Cry::Entity::EEvent::PhysicsCollision;
+		Cry::Entity::EEvent::Update | Cry::Entity::EEvent::Reset |
+		Cry::Entity::EEvent::PrePhysicsUpdate | Cry::Entity::EEvent::PhysicsCollision |
+		Cry::Entity::EEvent::GameplayStarted;
 }
 
 void CAlexPlayer::ProcessEvent(const SEntityEvent& event)
@@ -200,6 +241,30 @@ void CAlexPlayer::ProcessEvent(const SEntityEvent& event)
 			// Removed by Sandbox
 			m_pCursorEntity = nullptr;
 			m_pTargetMeshToAssistant = nullptr;
+		}
+	}
+	break;
+
+	case Cry::Entity::EEvent::GameplayStarted:
+	{
+		if (ICharacterInstance* pCharacterInstance = m_pAnimationComponent->GetCharacter())
+		{
+			IAnimationPoseBlenderDir* pPoseBlenderAim = m_pAnimationComponent->GetCharacter()->GetISkeletonPose()->GetIPoseBlenderAim();
+			if (pPoseBlenderAim)
+			{
+				if (ISkeletonAnim* skeletonAnim = pCharacterInstance->GetISkeletonAnim())
+				{
+					CryCharAnimationParams animParams;
+					animParams.m_nLayerID = 4;
+					animParams.m_nFlags = CA_LOOP_ANIMATION;
+					animParams.m_fPlaybackWeight = 1.0f;
+
+					skeletonAnim->StartAnimation("astra_AimPoses", animParams);
+					pPoseBlenderAim->SetLayer(4);
+
+					pPoseBlenderAim->SetState(false);
+				}
+			}
 		}
 	}
 	break;
@@ -266,6 +331,70 @@ void CAlexPlayer::ProcessEvent(const SEntityEvent& event)
 	}
 	break;
 
+	}
+}
+
+void CAlexPlayer::EnableWeaponAim()
+{
+	if (ICharacterInstance* pCharacterInstance = m_pAnimationComponent->GetCharacter())
+	{
+		IAnimationPoseBlenderDir* pPoseBlenderAim = m_pAnimationComponent->GetCharacter()->GetISkeletonPose()->GetIPoseBlenderAim();
+		if (pPoseBlenderAim)
+		{
+			pPoseBlenderAim->SetState(true);
+		}
+	}
+}
+
+void CAlexPlayer::DisableWeaponAim()
+{
+	if (ICharacterInstance* pCharacterInstance = m_pAnimationComponent->GetCharacter())
+	{
+		IAnimationPoseBlenderDir* pPoseBlenderAim = m_pAnimationComponent->GetCharacter()->GetISkeletonPose()->GetIPoseBlenderAim();
+		if (pPoseBlenderAim)
+		{
+			pPoseBlenderAim->SetState(false);
+		}
+	}
+}
+
+void CAlexPlayer::UpdateWeaponAim()
+{
+	if (ICharacterInstance* pCharacterInstance = m_pAnimationComponent->GetCharacter())
+	{
+		ISkeletonPose* pSkeleton = pCharacterInstance->GetISkeletonPose();
+
+		const CCamera& systemCamera = gEnv->pSystem->GetViewCamera();
+
+
+		IAnimationPoseBlenderDir* pPoseBlenderAim = pSkeleton->GetIPoseBlenderAim();
+		if (pPoseBlenderAim)
+		{
+			Vec3 targetPos = ZERO;
+
+			const auto rayFlags = rwi_stop_at_pierceable | rwi_colltype_any;
+			ray_hit rayhit;
+			static IPhysicalEntity* pSkipEnts[10];
+			pSkipEnts[0] = GetEntity()->GetPhysics();
+
+			const bool bRayHit = gEnv->pPhysicalWorld->RayWorldIntersection(systemCamera.GetPosition(), systemCamera.GetViewdir() * 1000.0f, ent_all, rayFlags, &rayhit, 1, GetEntity()->GetPhysicalEntity());
+
+			if (bRayHit && rayhit.pCollider != nullptr)
+			{
+				targetPos = rayhit.pt;
+			}
+			else
+			{
+				Vec3 playerOffset = GetEntity()->GetWorldPos() + GetEntity()->GetForwardDir() * 10.0f;
+				targetPos = systemCamera.GetPosition() + systemCamera.GetViewdir() * playerOffset.GetDistance(systemCamera.GetPosition());
+			}
+
+			pPoseBlenderAim->SetTarget(targetPos);
+
+			//IPersistantDebug* pDebug = gEnv->pGameFramework->GetIPersistantDebug();
+			//pDebug->Begin("CHPlayerDebug", false);
+			//pDebug->AddSphere(targetPos, 1.0f, ColorF(0.2f, 0.7f, 0.2f), gEnv->pTimer->GetFrameTime() + 0.01f);
+		}
 	}
 }
 
@@ -613,6 +742,11 @@ void CAlexPlayer::OnMouseButtonLeft(int activationMode, float value)
 	if (activationMode == eAAM_OnPress)
 	{
 		//todo
+		SendSchematycSignal(SStartFire());
+	}
+	if (activationMode == eAAM_OnRelease)
+	{
+		SendSchematycSignal(SStopFire());
 	}
 }
 
@@ -628,25 +762,54 @@ void CAlexPlayer::OnF(int activationMode, float value)
 	}
 }
 
-void CAlexPlayer::OnMouseButtonRight(int activationMode, float value)
+void CAlexPlayer::OnOne(int activationMode, float value)
 {
 	if (activationMode == eAAM_OnPress)
 	{
-		SendSchematycSignal(SStartResearchTargetingSignal());
-		m_isResearchTargeting = true;
-		//SpawnCursorEntity();
-		GameEvents::CPawnEvents::Get()->SendEvent(GameEvents::EPawnEvent::Assistant_StartSelectTarget);
+		if (!m_isResearchTargeting)
+		{
+			m_isFight = !m_isFight;
+			SetFight(m_isFight);
+		}
+	}
+}
 
+void CAlexPlayer::SetFight(bool value)
+{
+	if (value)
+	{
+		//set signal to fight state
+		SendSchematycSignal(SStartFightSignal());
+		GameEvents::CPawnEvents::Get()->SendEvent(GameEvents::EPawnEvent::Pawn_StartFight);
 		m_pAnimationComponent->SetTagWithId(m_rifleTagId, true);
 	}
-	if (activationMode == eAAM_OnRelease)
+	else
 	{
-		SendSchematycSignal(SStopResearchTargetingSignal());
-		m_isResearchTargeting = false;
-		//RemoveCursorEntity();
-		GameEvents::CPawnEvents::Get()->SendEvent(GameEvents::EPawnEvent::Assistant_ReleaseSelectTarget);
-
+		//send signal to movement state
+		SendSchematycSignal(SReleaseFightSignal());
+		GameEvents::CPawnEvents::Get()->SendEvent(GameEvents::EPawnEvent::Pawn_ReleaseFight);
 		m_pAnimationComponent->SetTagWithId(m_rifleTagId, false);
+	}
+}
+
+void CAlexPlayer::OnMouseButtonRight(int activationMode, float value)
+{
+	if (m_isFight == false)
+	{
+		if (activationMode == eAAM_OnPress)
+		{
+			SendSchematycSignal(SStartResearchTargetingSignal());
+			m_isResearchTargeting = true;
+			//SpawnCursorEntity();
+			GameEvents::CPawnEvents::Get()->SendEvent(GameEvents::EPawnEvent::Assistant_StartSelectTarget);
+		}
+		if (activationMode == eAAM_OnRelease)
+		{
+			SendSchematycSignal(SStopResearchTargetingSignal());
+			m_isResearchTargeting = false;
+			//RemoveCursorEntity();
+			GameEvents::CPawnEvents::Get()->SendEvent(GameEvents::EPawnEvent::Assistant_ReleaseSelectTarget);
+		}
 	}
 }
 

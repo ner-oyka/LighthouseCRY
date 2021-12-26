@@ -12,8 +12,11 @@ public:
 	~CUIManager();
 
 private:
-	virtual void OnStartSelectTargetForAssistant();
-	virtual void OnReleaseSelectTargetForAssistant();
+	virtual void OnStartSelectTargetForAssistant() override;
+	virtual void OnReleaseSelectTargetForAssistant() override;
+
+	virtual void OnPawnStartFight() override;
+	virtual void OnPawnReleaseFight() override;
 
 private:
 	IUIElement* m_pTargetElement = nullptr;

@@ -30,7 +30,8 @@ public:
 		desc.SetEditorCategory("Game");
 		desc.SetLabel("Assistant");
 		desc.SetDescription("This is automatic mobile science station");
-		desc.SetComponentFlags({ IEntityComponent::EFlags::Transform, IEntityComponent::EFlags::Socket, IEntityComponent::EFlags::Attach });
+		desc.SetComponentFlags({ IEntityComponent::EFlags::Transform, IEntityComponent::EFlags::Socket, IEntityComponent::EFlags::Attach,
+			IEntityComponent::EFlags::Singleton, IEntityComponent::EFlags::HideFromInspector });
 
 		desc.AddMember(&CAssistantComponent::m_flashlightClass, 'flcl', "FlashlightEntityClass", "FlashlightEntityClass", "FlashlightEntityClass.", "");
 	}

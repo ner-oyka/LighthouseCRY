@@ -32,6 +32,16 @@ CCameraControllerComponent* CCameraControllerComponent::m_pInstance = nullptr;
 
 CRY_STATIC_AUTO_REGISTER_FUNCTION(&RegisterCameraControllerComponent)
 
+CCameraControllerComponent::CCameraControllerComponent()
+{
+
+}
+
+CCameraControllerComponent::~CCameraControllerComponent()
+{
+
+}
+
 void CCameraControllerComponent::Initialize()
 {
 	if (m_pInstance)
@@ -389,35 +399,87 @@ void CCameraControllerComponent::OnMouseWheel(int activationMode, float value)
 
 void CCameraControllerComponent::OnMouseButtonRight(int activationMode, float value)
 {
-	if (activationMode == eAAM_OnPress)
+	if (m_bIsFighting)
 	{
-		m_saveCameraDistanceThirdPerson = m_newCameraDistanceThirdPerson;
-		m_newCameraDistanceThirdPerson = 2.0f;
-		m_newRightOffset = 0.6f;
-		m_newFieldOfView = m_fieldOfViewExamine;
+		if (activationMode == eAAM_OnPress)
+		{
+			m_saveCameraDistanceThirdPerson = m_newCameraDistanceThirdPerson;
+			m_newCameraDistanceThirdPerson = 2.0f;
+			m_newFieldOfView = m_fieldOfViewAiming;
+		}
+		if (activationMode == eAAM_OnRelease)
+		{
+			m_newCameraDistanceThirdPerson = m_saveCameraDistanceThirdPerson;
+			m_newCameraDistanceThirdPerson = 2.0f;
+			m_newFieldOfView = m_fieldOfViewExamine;
+		}
+	}
+	else
+	{
+		if (activationMode == eAAM_OnPress)
+		{
+			m_saveCameraDistanceThirdPerson = m_newCameraDistanceThirdPerson;
+			m_newCameraDistanceThirdPerson = 2.0f;
+			m_newRightOffset = 0.6f;
+			m_newFieldOfView = m_fieldOfViewExamine;
+		}
+
+		if (activationMode == eAAM_OnRelease)
+		{
+			m_newCameraDistanceThirdPerson = m_saveCameraDistanceThirdPerson;
+			m_newRightOffset = 0.0f;
+			m_newFieldOfView = m_fieldOfViewDefault;
+		}
 	}
 
-	if (activationMode == eAAM_OnRelease)
-	{
-		m_newCameraDistanceThirdPerson = m_saveCameraDistanceThirdPerson;
-		m_newRightOffset = 0.0f;
-		m_newFieldOfView = m_fieldOfViewDefault;
-	}
 }
 
 void CCameraControllerComponent::OnTriggerXIRight(int activationMode, float value)
 {
-	if (value > 0)
+	if (m_bIsFighting)
 	{
-		m_saveCameraDistanceThirdPerson = m_newCameraDistanceThirdPerson;
-		m_newCameraDistanceThirdPerson = 2.0f;
-		m_newRightOffset = 0.6f;
-		m_newFieldOfView = m_fieldOfViewExamine;
+		if (value > 0)
+		{
+			m_saveCameraDistanceThirdPerson = m_newCameraDistanceThirdPerson;
+			m_newCameraDistanceThirdPerson = 1.0f;
+		}
+		else
+		{
+			m_newCameraDistanceThirdPerson = m_saveCameraDistanceThirdPerson;
+			m_newCameraDistanceThirdPerson = 2.0f;
+		}
 	}
 	else
 	{
-		m_newCameraDistanceThirdPerson = m_saveCameraDistanceThirdPerson;
-		m_newRightOffset = 0.0f;
-		m_newFieldOfView = m_fieldOfViewDefault;
+		if (value > 0)
+		{
+			m_saveCameraDistanceThirdPerson = m_newCameraDistanceThirdPerson;
+			m_newCameraDistanceThirdPerson = 2.0f;
+			m_newRightOffset = 0.6f;
+			m_newFieldOfView = m_fieldOfViewExamine;
+		}
+		else
+		{
+			m_newCameraDistanceThirdPerson = m_saveCameraDistanceThirdPerson;
+			m_newRightOffset = 0.0f;
+			m_newFieldOfView = m_fieldOfViewDefault;
+		}
 	}
+}
+
+void CCameraControllerComponent::OnPawnStartFight()
+{
+	m_saveCameraDistanceThirdPerson = m_newCameraDistanceThirdPerson;
+	m_newCameraDistanceThirdPerson = 2.0f;
+	m_newRightOffset = 0.7f;
+	m_newFieldOfView = m_fieldOfViewExamine;
+	m_bIsFighting = true;
+}
+
+void CCameraControllerComponent::OnPawnReleaseFight()
+{
+	m_newCameraDistanceThirdPerson = m_saveCameraDistanceThirdPerson;
+	m_newRightOffset = 0.0f;
+	m_newFieldOfView = m_fieldOfViewDefault;
+	m_bIsFighting = false;
 }

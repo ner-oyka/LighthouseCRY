@@ -21,6 +21,8 @@
 
 #include "Framework/PlayerController.h"
 
+#include <Animation/PoseModifier/IKTorsoAim.h>
+
 static void RegisterAssistantComponent(Schematyc::IEnvRegistrar& registrar)
 {
 	Schematyc::CEnvRegistrationScope scope = registrar.Scope(IEntity::GetEntityScopeGUID());
@@ -339,6 +341,7 @@ void CAssistantComponent::UpdateEngineDir()
 
 		IAnimationPoseModifierPtr modPtr = m_engineRotateAtModifier;
 		m_pAnimationMeshComponent->GetCharacter()->GetISkeletonAnim()->PushPoseModifier(3, modPtr, "Engine Rotation");
+
 
 		m_engineRotateAtModifier->PushPosition(m_engineRightBoneId, IAnimationOperatorQueue::eOp_Override, targetRightPos);
 		m_engineRotateAtModifier->PushPosition(m_engineLeftBoneId, IAnimationOperatorQueue::eOp_Override, targetLeftPos);

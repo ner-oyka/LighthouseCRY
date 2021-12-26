@@ -11,7 +11,9 @@ namespace GameEvents
 	{
 		Assistant_StartSelectTarget = BIT(0),
 		Assistant_SetTarget = BIT(1),
-		Assistant_ReleaseSelectTarget = BIT(2)
+		Assistant_ReleaseSelectTarget = BIT(2),
+		Pawn_StartFight = BIT(3),
+		Pawn_ReleaseFight = BIT(4)
 	};
 
 	struct IPawnEvents : public BaseObserverProtocol
@@ -28,6 +30,14 @@ namespace GameEvents
 		/// Выход из режима выбора цели для ассистента
 		/// </summary>
 		virtual void OnReleaseSelectTargetForAssistant() {}
+		/// <summary>
+		/// Вход в режим боя
+		/// </summary>
+		virtual void OnPawnStartFight() {}
+		/// <summary>
+		/// Выход из режима боя
+		/// </summary>
+		virtual void OnPawnReleaseFight() {}
 	};
 
 	class CPawnEvents final

@@ -17,6 +17,7 @@
 #include <DefaultComponents/Cameras/CameraComponent.h>
 
 #include "Framework/PlayerInput.h"
+#include "Framework/Events/PawnEvents.h"
 
 
 namespace Game
@@ -35,16 +36,63 @@ namespace Game
 	{
 		desc.SetGUID("{3622DAA9-FA64-40DF-9308-7B4BC1D107D8}"_cry_guid);
 		desc.SetLabel("Camera Type");
-		desc.SetDefaultValue(ECameraType::Cinematic);
+		desc.SetDefaultValue(ECameraType::ThirdPerson);
 		desc.AddConstant(ECameraType::Cinematic, "Cinematic", "Cinematic");
 		desc.AddConstant(ECameraType::LookAt, "LookAt", "LookAt");
 		desc.AddConstant(ECameraType::ViewControl, "ViewControl", "ViewControl");
 		desc.AddConstant(ECameraType::ThirdPerson, "ThirdPerson", "ThirdPerson");
 		desc.AddConstant(ECameraType::TransformControl, "TransformControl", "TransformControl");
+		desc.AddConstant(ECameraType::Car, "CarControl", "CarControl");
 	}
 }
 
-class CCameraControllerComponent final : public IEntityComponent, public IInputEvents
+class CCameraInputEvents : public IInputEvents
+{
+public:
+	CCameraInputEvents()
+	{
+		ObserverManager::subscribe<IInputEvents>(this);
+	}
+
+	~CCameraInputEvents()
+	{
+		ObserverManager::unsubscribe<IInputEvents>(this);
+	}
+
+	//IInputEvents
+	virtual void OnMouseX(int activationMode, float value) override {};
+	virtual void OnMouseY(int activationMode, float value) override {};
+
+	virtual void OnYawDeltaXIRight(int activationMode, float value) override {};
+	virtual void OnPitchDeltaXIRight(int activationMode, float value) override {};
+
+	virtual void OnMouseWheel(int activationMode, float value) override {};
+
+	virtual void OnMouseButtonRight(int activationMode, float value) override {};
+	virtual void OnTriggerXIRight(int activationMode, float value) override {};
+	//~IInputEvents
+};
+
+class CCameraPawnEvents : public GameEvents::IPawnEvents
+{
+public:
+	CCameraPawnEvents()
+	{
+		GameEvents::CPawnEvents::Get()->Subscribe(this);
+	}
+
+	~CCameraPawnEvents()
+	{
+		GameEvents::CPawnEvents::Get()->Unsubscribe(this);
+	}
+
+	//IPawnEvents
+	virtual void OnPawnStartFight() override {};
+	virtual void OnPawnReleaseFight() override {};
+	//~IPawnEvents
+};
+
+class CCameraControllerComponent final : public IEntityComponent, public CCameraInputEvents, public CCameraPawnEvents
 {
 	struct SCameraOffsetTP
 	{
@@ -52,8 +100,8 @@ class CCameraControllerComponent final : public IEntityComponent, public IInputE
 	};
 
 public:
-	CCameraControllerComponent() { ObserverManager::subscribe<IInputEvents>(this); }
-	~CCameraControllerComponent() { ObserverManager::unsubscribe(this); }
+	CCameraControllerComponent();
+	~CCameraControllerComponent();
 
 	// IEntityComponent
 	virtual void Initialize() override;
@@ -132,6 +180,7 @@ private:
 	float m_fieldOfView = 65.0f;
 	float m_fieldOfViewDefault = 65.0f;
 	float m_fieldOfViewExamine = 45.0f;
+	float m_fieldOfViewAiming = 15.0f;
 	float m_newFieldOfView;
 
 	float followMoveCameraSpeed = 1.0f;
@@ -139,6 +188,10 @@ private:
 
 	Schematyc::CSharedString m_cameraRootName = "_root";
 	IEntity* m_pCameraRootEntity{ nullptr };
+
+	//States
+	bool m_bIsFighting = false;
+	//~States
 
 	static CCameraControllerComponent* m_pInstance;
 
@@ -156,19 +209,6 @@ private:
 	float GetXiPitchDelta();
 
 	float GetXiYawDelta();
-
-	//IInputEvents
-	virtual void OnMouseX(int activationMode, float value) override;
-	virtual void OnMouseY(int activationMode, float value) override;
-
-	virtual void OnYawDeltaXIRight(int activationMode, float value) override;
-	virtual void OnPitchDeltaXIRight(int activationMode, float value) override;
-
-	virtual void OnMouseWheel(int activationMode, float value) override;
-
-	virtual void OnMouseButtonRight(int activationMode, float value) override;
-	virtual void OnTriggerXIRight(int activationMode, float value) override;
-	//~IInputEvents
 
 private:
 	//Inputs
@@ -199,4 +239,23 @@ private:
 	float m_xiPitchFilter{ 0.0001f };
 
 	float m_xiYawFilter{ 0.0001f };
+
+private:
+	//IInputEvents
+	virtual void OnMouseX(int activationMode, float value) override;
+	virtual void OnMouseY(int activationMode, float value) override;
+
+	virtual void OnYawDeltaXIRight(int activationMode, float value) override;
+	virtual void OnPitchDeltaXIRight(int activationMode, float value) override;
+
+	virtual void OnMouseWheel(int activationMode, float value) override;
+
+	virtual void OnMouseButtonRight(int activationMode, float value) override;
+	virtual void OnTriggerXIRight(int activationMode, float value) override;
+	//~IInputEvents
+
+	//IPawnEvents
+	virtual void OnPawnStartFight() override;
+	virtual void OnPawnReleaseFight() override;
+	//~IPawnEvents
 };

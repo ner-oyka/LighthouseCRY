@@ -32,7 +32,7 @@ public:
 	static void ReflectType(Schematyc::CTypeDesc<CPlayerController>& desc)
 	{
 		desc.SetGUID("{7CA0C637-9AEC-4D7D-84C5-C288B6CAEA65}"_cry_guid);
-		desc.SetComponentFlags({ IEntityComponent::EFlags::Singleton });
+		desc.SetComponentFlags({ IEntityComponent::EFlags::Singleton, IEntityComponent::EFlags::HideFromInspector });
 		desc.AddMember(&CPlayerController::m_alexPlayerClass, 'apcl', "AlexPlayerClass", "Alex Player Class", "Alex player class.", "");
 		desc.AddMember(&CPlayerController::m_assistantClass, 'ascl', "AssistantEntity", "Assistant Entity", "Assistant Entity.", "");
 	}
