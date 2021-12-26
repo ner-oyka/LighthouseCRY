@@ -1,12 +1,6 @@
 // Deer Solar Games | 2021 | Lighthouse project
 
 // Camera controller component for game view
-// Third Person Camera mode
-// Cinematic mode: finding main cinemetic camera and replase its pos and rot for smooth animation and more features (cinematic mode used full features track view):
-// LookAt: look at player character
-// ViewControl: rotate view camera as FPS --in dev
-// TransformControl: rotate view camera around player character with adjusted rotate limited -- in dev
-
 // Writed by quantbrain
 
 #pragma once
@@ -18,33 +12,6 @@
 
 #include "Framework/PlayerInput.h"
 #include "Framework/Events/PawnEvents.h"
-
-
-namespace Game
-{
-	enum class ECameraType
-	{
-		Cinematic = 0,
-		LookAt = 1,
-		ViewControl = 2,
-		ThirdPerson = 3,
-		TransformControl = 4,
-		Car = 5
-	};
-
-	static void ReflectType(Schematyc::CTypeDesc<ECameraType>& desc)
-	{
-		desc.SetGUID("{3622DAA9-FA64-40DF-9308-7B4BC1D107D8}"_cry_guid);
-		desc.SetLabel("Camera Type");
-		desc.SetDefaultValue(ECameraType::ThirdPerson);
-		desc.AddConstant(ECameraType::Cinematic, "Cinematic", "Cinematic");
-		desc.AddConstant(ECameraType::LookAt, "LookAt", "LookAt");
-		desc.AddConstant(ECameraType::ViewControl, "ViewControl", "ViewControl");
-		desc.AddConstant(ECameraType::ThirdPerson, "ThirdPerson", "ThirdPerson");
-		desc.AddConstant(ECameraType::TransformControl, "TransformControl", "TransformControl");
-		desc.AddConstant(ECameraType::Car, "CarControl", "CarControl");
-	}
-}
 
 class CCameraInputEvents : public IInputEvents
 {
@@ -89,17 +56,46 @@ public:
 	//IPawnEvents
 	virtual void OnPawnStartFight() override {};
 	virtual void OnPawnReleaseFight() override {};
+	virtual void OnPawnSetDriving() override {};
+	virtual void OnPawnReleaseDriving() override {};
 	//~IPawnEvents
 };
 
 class CCameraControllerComponent final : public IEntityComponent, public CCameraInputEvents, public CCameraPawnEvents
 {
-	struct SCameraOffsetTP
+public:
+	// SIGNALS
+	struct SPressSecondaryInteractSignal
 	{
-		static constexpr float cameraOffset[] = { 0.f, -7.f, 0.f };
+		SPressSecondaryInteractSignal() = default;
 	};
 
-public:
+	struct SReleaseSecondaryInteractSignal
+	{
+		SReleaseSecondaryInteractSignal() = default;
+	};
+
+	struct SPawnStartFightSignal
+	{
+		SPawnStartFightSignal() = default;
+	};
+
+	struct SPawnReleaseFightSignal
+	{
+		SPawnReleaseFightSignal() = default;
+	};
+
+	struct SPawnSetDrivingSignal
+	{
+		SPawnSetDrivingSignal() = default;
+	};
+
+	struct SPawnReleaseDrivingSignal
+	{
+		SPawnReleaseDrivingSignal() = default;
+	};
+	//~SIGNALS
+
 	CCameraControllerComponent();
 	~CCameraControllerComponent();
 
@@ -117,52 +113,84 @@ public:
 		desc.SetLabel("Camera Controller");
 		desc.SetEditorCategory("Camera");
 		desc.SetDescription("The camera controller component.");
-		desc.SetComponentFlags({ IEntityComponent::EFlags::Singleton });
+		desc.SetComponentFlags({ IEntityComponent::EFlags::Singleton, IEntityComponent::EFlags::HideFromInspector });
 
-		desc.AddMember(&CCameraControllerComponent::cameraType, 'type', "CameraType", "Camera Type", "..", Game::ECameraType::Cinematic);
+		//Common
+		desc.AddMember(&CCameraControllerComponent::m_cameraFarPlane, 'fpcm', "CameraFarPlane", "Camera Far Plane", "..", 8000.0f);
+
+		//Cinematic
 		desc.AddMember(&CCameraControllerComponent::followMoveCameraSpeed, 'fmcs', "FollowMoveCameraSpeed", "Follow Move Camera Speed", "..", 1.0f);
 		desc.AddMember(&CCameraControllerComponent::followRotateCameraSpeed, 'frcs', "FollowRotateCameraSpeed", "Follow Rotate Camera Speed", "..", 1.0f);
-		desc.AddMember(&CCameraControllerComponent::m_cameraRootName, 'rtne', "CameraRootName", "Camera Root Name", "..", "_root");
+		desc.AddMember(&CCameraControllerComponent::m_cameraRootName, 'rtne', "CameraRootName", "Camera Root Name", "For Cinematic mode", "_root");
+
+		desc.AddMember(&CCameraControllerComponent::m_isLookAt, 'lkat', "IsLookAtPawn", "IsLookAtPawn", "IsLookAtPawn", false);
+		desc.AddMember(&CCameraControllerComponent::m_isViewControl, 'vctr', "IsViewControl", "IsViewControl", "IsViewControl", false);
 
 		//Third Person
-		desc.AddMember(&CCameraControllerComponent::m_cameraOffsetThirdPerson, 'cost', "CameraOffset", "Camera Offset", "..", Vec3(SCameraOffsetTP::cameraOffset[0], SCameraOffsetTP::cameraOffset[1], SCameraOffsetTP::cameraOffset[2]));
-		desc.AddMember(&CCameraControllerComponent::m_cameraDistanceThirdPerson, 'dsnt', "CameraDistance", "Camera Distance", "..", 3.f);
-		desc.AddMember(&CCameraControllerComponent::m_pitchMin, 'pmax', "PitchMin", "Pitch Min", "..", 15.f);
-		desc.AddMember(&CCameraControllerComponent::m_pitchMax, 'pmin', "PitchMax", "Pitch Max", "..", 85.f);
+		desc.AddMember(&CCameraControllerComponent::m_newCameraDistanceThirdPerson, 'dsnt', "CameraDistanceThirdPerson", "Camera Distance Third Person", "..", 3.f);
+		desc.AddMember(&CCameraControllerComponent::m_pitchMinThirdPerson, 'pmax', "PitchMinThirdPerson", "Pitch Min Third Person", "..", 15.f);
+		desc.AddMember(&CCameraControllerComponent::m_pitchMaxThirdPerson, 'pmin', "PitchMaxThirdPerson", "Pitch Max Third Person", "..", 85.f);
+
+		desc.AddMember(&CCameraControllerComponent::m_newRightOffsetThirdPerson, 'rifs', "RightOffsetThirdPerson", "Right Offset Third Person", "..", 0.f);
 
 		desc.AddMember(&CCameraControllerComponent::m_fieldOfViewDefault, 'fovd', "FoVDefault", "FoV Default", "..", 65.f);
 		desc.AddMember(&CCameraControllerComponent::m_fieldOfViewExamine, 'fove', "FoVExamine", "FoV Examine", "..", 45.f);
+		desc.AddMember(&CCameraControllerComponent::m_fieldOfViewAiming, 'fova', "FoVAiming", "FoV Aiming", "..", 20.f);
+
+		//Vehicle
+		desc.AddMember(&CCameraControllerComponent::m_newCameraDistanceVehicle, 'cdvl', "CameraDistanceVehicle", "Camera Distance Vehicle", "..", 3.f);
+		desc.AddMember(&CCameraControllerComponent::m_pitchMinVehicle, 'pmxv', "PitchMinVehicle", "Pitch Min Vehicle", "..", 15.f);
+		desc.AddMember(&CCameraControllerComponent::m_pitchMaxVehicle, 'pmnv', "PitchMaxVehicle", "Pitch Max Vehicle", "..", 85.f);
+
+		desc.AddMember(&CCameraControllerComponent::m_newRightOffsetVehicle, 'rovl', "RightOffsetVehicle", "Right Offset Vehicle", "..", 0.f);
 	}
 
 	static CCameraControllerComponent* Get() { return m_pInstance; }
 
-	void SetType(Game::ECameraType type) { cameraType = type; }
+	void UpdateThirdPerson();
+	void UpdateCinematic();
+	void UpdateVehicle();
 
-private:
-	void UpdateCamera();
 	void UpdateInputs();
 
-	void SetOffset(const Vec3& offset);
+	void SetFoV(float fov);
+	void SetRightOffsetTP(float val);
+	void SetCameraDistanceTP(float val);
+
+private:
 	void CameraZoom(const float& value);
-	Vec3 GetOffset() { return m_cameraOffsetThirdPerson; }
 	Vec3 GetViewDir() { return m_pCameraComponent->GetCamera().GetViewdir(); }
 
 	bool CollisionDetection(const Vec3& TargetPosition, Vec3& CameraPosition);
 
-protected:
-	Game::ECameraType cameraType = Game::ECameraType::Cinematic;
-
 private:
 	Cry::DefaultComponents::CCameraComponent* m_pCameraComponent = nullptr;
 
+	//Common
+	float m_cameraFarPlane = 8000.0f;
 
+	//Third Person
 	float m_cameraDistanceThirdPerson = 3.f;
 	float m_newCameraDistanceThirdPerson;
 	float m_saveCameraDistanceThirdPerson;
-	float m_rightOffset;
-	float m_newRightOffset;
 
-	Vec3 m_cameraOffsetThirdPerson = Vec3(SCameraOffsetTP::cameraOffset[0], SCameraOffsetTP::cameraOffset[1], SCameraOffsetTP::cameraOffset[2]);
+	Schematyc::Range<0, 89> m_pitchMinThirdPerson = 15.0f;
+	Schematyc::Range<0, 89> m_pitchMaxThirdPerson = 85.0f;
+
+	float m_rightOffsetThirdPerson;
+	float m_newRightOffsetThirdPerson;
+
+	//Vehicle
+	float m_cameraDistanceVehicle = 3.f;
+	float m_newCameraDistanceVehicle;
+	float m_saveCameraDistanceVehicle;
+
+	Schematyc::Range<0, 89> m_pitchMinVehicle = 15.0f;
+	Schematyc::Range<0, 89> m_pitchMaxVehicle = 85.0f;
+
+	float m_rightOffsetVehicle;
+	float m_newRightOffsetVehicle;
+	//~Vehicle
 
 	float m_viewPitch = DEG2RAD(45.f);
 	float m_viewYaw;
@@ -172,26 +200,23 @@ private:
 	Quat m_quatTargetRotation{ IDENTITY };
 	Vec3 m_vecLastPosition{ ZERO };
 
-	Schematyc::Range<0, 89> m_pitchMin = 15.0f;
-	Schematyc::Range<0, 89> m_pitchMax = 85.0f;
-
-	Schematyc::Range<0, 32768> m_nearPlane = 0.25f;
-
+	//FOV
 	float m_fieldOfView = 65.0f;
 	float m_fieldOfViewDefault = 65.0f;
 	float m_fieldOfViewExamine = 45.0f;
 	float m_fieldOfViewAiming = 15.0f;
 	float m_newFieldOfView;
 
+	//Cinematic
 	float followMoveCameraSpeed = 1.0f;
 	float followRotateCameraSpeed = 1.0f;
 
+	bool m_isLookAt = false;
+	bool m_isViewControl = false;
+
 	Schematyc::CSharedString m_cameraRootName = "_root";
 	IEntity* m_pCameraRootEntity{ nullptr };
-
-	//States
-	bool m_bIsFighting = false;
-	//~States
+	//~Cinematic
 
 	static CCameraControllerComponent* m_pInstance;
 
@@ -257,5 +282,7 @@ private:
 	//IPawnEvents
 	virtual void OnPawnStartFight() override;
 	virtual void OnPawnReleaseFight() override;
+	virtual void OnPawnSetDriving() override;
+	virtual void OnPawnReleaseDriving() override;
 	//~IPawnEvents
 };

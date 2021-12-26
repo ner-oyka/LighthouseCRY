@@ -313,7 +313,7 @@ void CAlexPlayer::ProcessEvent(const SEntityEvent& event)
 			//temp
 			if (relativeContactVelocity2.len2() > 13.0f && contactMass > 45 || relativeContactVelocity2.len2() > 53.0f && contactMass > 3)
 			{
-				SendSchematycSignal(SDeathSignal());
+				//SendSchematycSignal(SDeathSignal());
 			}
 
 			//CryLog("impulse: %f, %f, %f", relativeContactVelocity.x, relativeContactVelocity.y, relativeContactVelocity.z);
@@ -846,7 +846,7 @@ void CAlexPlayer::OnEnter(int activationMode, float value)
 		{
 			SendSchematycSignal(SSetDrivingSignal());
 
-			CCameraControllerComponent::Get()->SetType(Game::ECameraType::Car);
+			GameEvents::CPawnEvents::Get()->SendEvent(GameEvents::EPawnEvent::Pawn_SetDriving);
 			carEntity->GetComponent<CCarPlayer>()->SetDriver(GetEntity());
 			CPlayerController::Get()->SetControlledPawn(carEntity->GetComponent<CCarPlayer>());
 		}

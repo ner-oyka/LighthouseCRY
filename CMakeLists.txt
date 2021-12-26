@@ -57,6 +57,13 @@ add_sources("Weapons_uber.cpp"
 		"Components/Weapons/WeaponAttachment.h"
 )
 
+add_sources("Enemies_uber.cpp"
+    PROJECTS Game
+    SOURCE_GROUP "Components\\\\Enemies"
+		"Components/Enemies/Turret.cpp"
+		"Components/Enemies/Turret.h"
+)
+
 add_sources("DRS_uber.cpp"
     PROJECTS Game
     SOURCE_GROUP "DRS"

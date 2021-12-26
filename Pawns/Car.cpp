@@ -8,7 +8,7 @@
 
 #include <CryPhysics\physinterface.h>
 #include <CryGame/GameUtils.h>
-
+#include "Framework/PlayerController.h"
 #include "Alex.h"
 
 static void RegisterCarPlayer(Schematyc::IEnvRegistrar& registrar)
@@ -121,7 +121,7 @@ void CCarPlayer::ReleaseDriver()
 	GetEntity()->DetachAll();
 	CPlayerController::Get()->SetControlledPawn(m_pCarDriverEntity->GetComponent<CAlexPlayer>());
 	m_pCarDriverEntity->GetComponent<CAlexPlayer>()->GetOutTransport();
-	CCameraControllerComponent::Get()->SetType(Game::ECameraType::ThirdPerson);
+	GameEvents::CPawnEvents::Get()->SendEvent(GameEvents::EPawnEvent::Pawn_ReleaseDriving);
 	m_pCarDriverEntity = nullptr;
 }
 

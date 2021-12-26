@@ -6,6 +6,7 @@
 #include <CryCore/StaticInstanceList.h>
 #include <CrySchematyc/Env/Elements/EnvComponent.h>
 #include <CrySchematyc/Env/Elements/EnvFunction.h>
+#include <CrySchematyc/Env/Elements/EnvSignal.h>
 
 #include <CryPhysics/physinterface.h>
 
@@ -17,6 +18,45 @@
 
 #include <CryGame/GameUtils.h>
 
+
+//REGISTER SIGNALS
+void ReflectType(Schematyc::CTypeDesc<CCameraControllerComponent::SPressSecondaryInteractSignal>& desc)
+{
+	desc.SetGUID("{E0F48F5D-F679-4B08-B585-A87AFB541105}"_cry_guid);
+	desc.SetLabel("OnPressSecondaryInteract");
+}
+
+void ReflectType(Schematyc::CTypeDesc<CCameraControllerComponent::SReleaseSecondaryInteractSignal>& desc)
+{
+	desc.SetGUID("{1056D2B1-C714-469B-80DE-8A4464A6FA88}"_cry_guid);
+	desc.SetLabel("OnReleaseSecondaryInteract");
+}
+
+void ReflectType(Schematyc::CTypeDesc<CCameraControllerComponent::SPawnStartFightSignal>& desc)
+{
+	desc.SetGUID("{3FCD0E13-47FC-4D73-93C5-E9DB62F1EE9F}"_cry_guid);
+	desc.SetLabel("OnPawnStartFight");
+}
+
+void ReflectType(Schematyc::CTypeDesc<CCameraControllerComponent::SPawnReleaseFightSignal>& desc)
+{
+	desc.SetGUID("{E03821C7-A409-4FAB-BF16-73EDFB8A279E}"_cry_guid);
+	desc.SetLabel("OnPawnReleaseFight");
+}
+
+void ReflectType(Schematyc::CTypeDesc<CCameraControllerComponent::SPawnSetDrivingSignal>& desc)
+{
+	desc.SetGUID("{414665AC-B65F-48E3-8E70-21BF8E55535D}"_cry_guid);
+	desc.SetLabel("OnPawnSetDriving");
+}
+
+void ReflectType(Schematyc::CTypeDesc<CCameraControllerComponent::SPawnReleaseDrivingSignal>& desc)
+{
+	desc.SetGUID("{8A702DA1-F8BF-4F1C-9CF8-E8E6C7C7302B}"_cry_guid);
+	desc.SetLabel("OnPawnReleaseDriving");
+}
+//~REGISTER SIGNALS
+
 static void RegisterCameraControllerComponent(Schematyc::IEnvRegistrar& registrar)
 {
 	Schematyc::CEnvRegistrationScope scope = registrar.Scope(IEntity::GetEntityScopeGUID());
@@ -24,6 +64,47 @@ static void RegisterCameraControllerComponent(Schematyc::IEnvRegistrar& registra
 		Schematyc::CEnvRegistrationScope componentScope = scope.Register(SCHEMATYC_MAKE_ENV_COMPONENT(CCameraControllerComponent));
 		// Functions
 		{
+			auto pFunction = SCHEMATYC_MAKE_ENV_FUNCTION(&CCameraControllerComponent::UpdateCinematic, "{C636E38B-7594-46C2-8BE5-DA9DCCE80BD0}"_cry_guid, "UpdateCinematic");
+			componentScope.Register(pFunction);
+		}
+		{
+			auto pFunction = SCHEMATYC_MAKE_ENV_FUNCTION(&CCameraControllerComponent::UpdateThirdPerson, "{57A3D9FE-0151-4AC5-BE44-8140294669B2}"_cry_guid, "UpdateThirdPerson");
+			componentScope.Register(pFunction);
+		}
+		{
+			auto pFunction = SCHEMATYC_MAKE_ENV_FUNCTION(&CCameraControllerComponent::UpdateVehicle, "{73CFF915-8B0C-4F02-A93A-B7E98B29EFB8}"_cry_guid, "UpdateVehicle");
+			componentScope.Register(pFunction);
+		}
+		{
+			auto pFunction = SCHEMATYC_MAKE_ENV_FUNCTION(&CCameraControllerComponent::UpdateInputs, "{A8CDFFAD-9B34-4C92-BBFA-9C34834AE3A3}"_cry_guid, "UpdateInputs");
+			componentScope.Register(pFunction);
+		}
+		{
+			auto pFunction = SCHEMATYC_MAKE_ENV_FUNCTION(&CCameraControllerComponent::SetFoV, "{B591E6C3-FC6D-49DA-A063-5EF607CDEB44}"_cry_guid, "SetFoV");
+			pFunction->SetFlags({ Schematyc::EEnvFunctionFlags::Member });
+			pFunction->BindInput(1, 'fov', "FoV");
+			componentScope.Register(pFunction);
+		}
+		{
+			auto pFunction = SCHEMATYC_MAKE_ENV_FUNCTION(&CCameraControllerComponent::SetRightOffsetTP, "{241DFCB0-9C36-4E91-825D-07015A667AD4}"_cry_guid, "SetRightOffsetTP");
+			pFunction->SetFlags({ Schematyc::EEnvFunctionFlags::Member });
+			pFunction->BindInput(1, 'ofst', "Offset");
+			componentScope.Register(pFunction);
+		}
+		{
+			auto pFunction = SCHEMATYC_MAKE_ENV_FUNCTION(&CCameraControllerComponent::SetCameraDistanceTP, "{BFF3F472-78FD-46E6-92ED-3615134D012D}"_cry_guid, "SetCameraDistanceTP");
+			pFunction->SetFlags({ Schematyc::EEnvFunctionFlags::Member });
+			pFunction->BindInput(1, 'dst', "Distance");
+			componentScope.Register(pFunction);
+		}
+		//Signals
+		{
+			componentScope.Register(SCHEMATYC_MAKE_ENV_SIGNAL(CCameraControllerComponent::SPressSecondaryInteractSignal));
+			componentScope.Register(SCHEMATYC_MAKE_ENV_SIGNAL(CCameraControllerComponent::SReleaseSecondaryInteractSignal));
+			componentScope.Register(SCHEMATYC_MAKE_ENV_SIGNAL(CCameraControllerComponent::SPawnStartFightSignal));
+			componentScope.Register(SCHEMATYC_MAKE_ENV_SIGNAL(CCameraControllerComponent::SPawnReleaseFightSignal));
+			componentScope.Register(SCHEMATYC_MAKE_ENV_SIGNAL(CCameraControllerComponent::SPawnSetDrivingSignal));
+			componentScope.Register(SCHEMATYC_MAKE_ENV_SIGNAL(CCameraControllerComponent::SPawnReleaseDrivingSignal));
 		}
 	}
 }
@@ -55,11 +136,13 @@ void CCameraControllerComponent::Initialize()
 	m_pInstance = this;
 
 	m_pCameraComponent = m_pEntity->GetOrCreateComponent<Cry::DefaultComponents::CCameraComponent>();
+	m_pCameraComponent->SetFarPlane(m_cameraFarPlane);
+	m_pCameraComponent->SetFieldOfView(CryTransform::CAngle::FromDegrees(m_fieldOfViewDefault));
 }
 
 EntityEventMask CCameraControllerComponent::GetEventMask() const
 {
-	return EEntityEvent::Update | EEntityEvent::GameplayStarted;
+	return EEntityEvent::GameplayStarted;
 }
 
 IEntityComponent::ComponentEventPriority CCameraControllerComponent::GetEventPriority() const
@@ -71,17 +154,6 @@ void CCameraControllerComponent::ProcessEvent(const SEntityEvent& event)
 {
 	switch (event.event)
 	{
-	case EEntityEvent::Update:
-	{
-		if (gEnv->IsGameOrSimulation())
-		{
-			UpdateInputs();
-			UpdateCamera();
-		}
-
-	}
-	break;
-
 	case EEntityEvent::GameplayStarted:
 	{
 		if (gEnv->pEntitySystem->FindEntityByName(m_cameraRootName.c_str()))
@@ -103,16 +175,58 @@ void CCameraControllerComponent::ProcessEvent(const SEntityEvent& event)
 	}
 }
 
-void CCameraControllerComponent::UpdateCamera()
+void CCameraControllerComponent::UpdateVehicle()
 {
-	if (cameraType == Game::ECameraType::Car)
+	Vec3 playerPos = CPlayerController::Get()->GetControlledPawn()->GetEntity()->GetWorldPos();
+	Matrix34 m_cameraMatrix;
+
+	m_viewPitch += (GetMousePitchDelta() + GetXiPitchDelta()) * 4.f;
+	m_viewPitch = clamp_tpl(m_viewPitch, DEG2RAD(m_pitchMinVehicle * -1.0f), DEG2RAD(m_pitchMaxVehicle));
+	m_viewYaw += (GetMouseYawDelta() - GetXiYawDelta()) * 4.f;
+
+	if (m_viewYaw > gf_PI)
+		m_viewYaw -= gf_PI2;
+	if (m_viewYaw < -gf_PI)
+		m_viewYaw += gf_PI2;
+
+
+	Quat quatPreTransYP = Quat(Ang3(m_viewPitch, 0.0f, m_viewYaw));
+
+
+	Interpolate(m_rightOffsetVehicle, m_newRightOffsetVehicle, 1, gEnv->pTimer->GetFrameTime());
+	Vec3 rightOffset = GetEntity()->GetForwardDir().cross(Vec3(0.f, 0.f, 1.f)).GetNormalized() * m_rightOffsetVehicle;
+
+	Vec3 vecTargetAimPosition = playerPos + Vec3(0.f, 0.f, 1.7f);
+
+	Quat quatTargetRotationGoal = m_quatTargetRotation * quatPreTransYP;
+	Quat quatTargetRotation = Quat::CreateSlerp(m_quatLastTargetRotation, quatTargetRotationGoal, gEnv->pTimer->GetFrameTime() * 7.0f);
+	m_quatLastTargetRotation = quatTargetRotation;
+
+	Vec3 vecViewPosition = vecTargetAimPosition + (quatTargetRotation * (FORWARD_DIRECTION * 7.0f));
+
+	Quat quatViewRotationGoal = Quat::CreateRotationVDir((vecTargetAimPosition - vecViewPosition).GetNormalizedSafe());
+	Quat quatViewRotation = Quat::CreateSlerp(m_quatLastViewRotation, quatViewRotationGoal, gEnv->pTimer->GetFrameTime() * 50.f);
+	m_quatLastViewRotation = quatViewRotation;
+
+	Quat quatOrbitRotation = quatViewRotation;
+
+	CollisionDetection(vecTargetAimPosition, vecViewPosition);
+
+	m_vecLastPosition = vecViewPosition;
+	m_cameraMatrix = Matrix34::Create(Vec3(1.0f), quatOrbitRotation, vecViewPosition);
+
+	m_pEntity->SetLocalTM(m_cameraMatrix);
+}
+
+void CCameraControllerComponent::UpdateThirdPerson()
+{
+	if (IEntity* playerEntity = CPlayerController::Get()->GetControlledPawn()->GetEntity())
 	{
-		// Car update camera
-		Vec3 playerPos = CPlayerController::Get()->GetControlledPawn()->GetEntity()->GetWorldPos();
+		Vec3 playerPos = playerEntity->GetWorldPos();
 		Matrix34 m_cameraMatrix;
 
 		m_viewPitch += (GetMousePitchDelta() + GetXiPitchDelta()) * 4.f;
-		m_viewPitch = clamp_tpl(m_viewPitch, DEG2RAD(m_pitchMin * -1.0f), DEG2RAD(m_pitchMax));
+		m_viewPitch = clamp_tpl(m_viewPitch, DEG2RAD(m_pitchMinThirdPerson * -1.0f), DEG2RAD(m_pitchMaxThirdPerson));
 		m_viewYaw += (GetMouseYawDelta() - GetXiYawDelta()) * 4.f;
 
 		if (m_viewYaw > gf_PI)
@@ -124,55 +238,9 @@ void CCameraControllerComponent::UpdateCamera()
 		Quat quatPreTransYP = Quat(Ang3(m_viewPitch, 0.0f, m_viewYaw));
 
 
-		Interpolate(m_rightOffset, m_newRightOffset, 1, gEnv->pTimer->GetFrameTime());
-		Vec3 rightOffset = GetEntity()->GetForwardDir().cross(Vec3(0.f, 0.f, 1.f)).GetNormalized() * m_rightOffset;
+		Interpolate(m_rightOffsetThirdPerson, m_newRightOffsetThirdPerson, 6, gEnv->pTimer->GetFrameTime());
+		Vec3 rightOffset = GetEntity()->GetForwardDir().cross(Vec3(0.f, 0.f, 1.f)).GetNormalized() * m_rightOffsetThirdPerson;
 
-		Vec3 vecTargetAimPosition = playerPos + Vec3(0.f, 0.f, 1.7f);
-
-		Quat quatTargetRotationGoal = m_quatTargetRotation * quatPreTransYP;
-		Quat quatTargetRotation = Quat::CreateSlerp(m_quatLastTargetRotation, quatTargetRotationGoal, gEnv->pTimer->GetFrameTime() * 7.0f);
-		m_quatLastTargetRotation = quatTargetRotation;
-
-		Vec3 vecViewPosition = vecTargetAimPosition + (quatTargetRotation * (FORWARD_DIRECTION * 7.0f));
-
-		Quat quatViewRotationGoal = Quat::CreateRotationVDir((vecTargetAimPosition - vecViewPosition).GetNormalizedSafe());
-		Quat quatViewRotation = Quat::CreateSlerp(m_quatLastViewRotation, quatViewRotationGoal, gEnv->pTimer->GetFrameTime() * 50.f);
-		m_quatLastViewRotation = quatViewRotation;
-
-		Quat quatOrbitRotation = quatViewRotation;
-
-		CollisionDetection(vecTargetAimPosition, vecViewPosition);
-
-		m_vecLastPosition = vecViewPosition;
-		m_cameraMatrix = Matrix34::Create(Vec3(1.0f), quatOrbitRotation, vecViewPosition);
-
-		m_pEntity->SetLocalTM(m_cameraMatrix);
-
-		return;
-	}
-
-	if (cameraType == Game::ECameraType::ThirdPerson)
-	{
-		// Third Person update camera
-		Vec3 playerPos = CPlayerController::Get()->GetControlledPawn()->GetEntity()->GetWorldPos();
-		Matrix34 m_cameraMatrix;
-
-		m_viewPitch += (GetMousePitchDelta() + GetXiPitchDelta()) * 4.f;
-		m_viewPitch = clamp_tpl(m_viewPitch, DEG2RAD(m_pitchMin * -1.0f), DEG2RAD(m_pitchMax));
-		m_viewYaw += (GetMouseYawDelta() - GetXiYawDelta()) * 4.f;
-
-		if (m_viewYaw > gf_PI)
-			m_viewYaw -= gf_PI2;
-		if (m_viewYaw < -gf_PI)
-			m_viewYaw += gf_PI2;
-
-
-		Quat quatPreTransYP = Quat(Ang3(m_viewPitch, 0.0f, m_viewYaw));
-
-
-		Interpolate(m_rightOffset, m_newRightOffset, 6, gEnv->pTimer->GetFrameTime());
-		Vec3 rightOffset = GetEntity()->GetForwardDir().cross(Vec3(0.f, 0.f, 1.f)).GetNormalized() * m_rightOffset;
-				
 		Vec3 vecTargetAimPosition = playerPos + Vec3(0.f, 0.f, 1.55f) + rightOffset;
 
 		Quat quatTargetRotationGoal = m_quatTargetRotation * quatPreTransYP;
@@ -199,24 +267,25 @@ void CCameraControllerComponent::UpdateCamera()
 		//FOV
 		Interpolate(m_fieldOfView, m_newFieldOfView, 6, gEnv->pTimer->GetFrameTime());
 		m_pCameraComponent->SetFieldOfView(CryTransform::CAngle::FromDegrees(m_fieldOfView));
+	}	
+}
 
-		return;
-	}
-
+void CCameraControllerComponent::UpdateCinematic()
+{
 	if (m_pCameraRootEntity)
 	{
 		Vec3 pos = Vec3::CreateLerp(m_pEntity->GetPos(), m_pCameraRootEntity->GetPos(), gEnv->pTimer->GetFrameTime() * followMoveCameraSpeed);
 		Quat rot = Quat::CreateSlerp(m_pEntity->GetRotation(), m_pCameraRootEntity->GetRotation(), gEnv->pTimer->GetFrameTime() * followRotateCameraSpeed);
 
 		//Look At
-		if (cameraType == Game::ECameraType::LookAt)
+		if (m_isLookAt)
 		{
 			Vec3 playerPos = CPlayerController::Get()->GetControlledPawn()->GetEntity()->GetWorldPos();
 			Vec3 vecTargetAimPosition = playerPos + Vec3(0.f, 0.f, 1.8f);
 			rot = Quat::CreateRotationVDir((vecTargetAimPosition - pos).GetNormalizedSafe());
 		}
 
-		if (cameraType == Game::ECameraType::ViewControl)
+		if (m_isViewControl)
 		{
 			m_viewPitch += (GetMousePitchDelta() + GetXiPitchDelta()) * 4.0f;
 			//m_viewPitch = clamp_tpl(m_viewPitch, DEG2RAD(5.0f), DEG2RAD(60.0f));
@@ -239,22 +308,12 @@ void CCameraControllerComponent::UpdateCamera()
 			rot = quatTargetRotation;
 		}
 
-		if (cameraType == Game::ECameraType::TransformControl)
-		{
-			// in dev
-		}
-
 		Matrix34 camMatrix = Matrix34::Create(Vec3(1.0f), rot, pos);
 		m_pEntity->SetLocalTM(camMatrix);
+
+		//WORLD MATRIX TO LOCAL
+		//m_pEntity->SetLocalTM(m_pEntity->GetParentAttachPointWorldTM().GetInverted() * camMatrix);
 	}
-
-	//WORLD MATRIX TO LOCAL
-	//m_pEntity->SetLocalTM(m_pEntity->GetParentAttachPointWorldTM().GetInverted() * camMatrix);
-}	
-
-void CCameraControllerComponent::SetOffset(const Vec3& offset)
-{
-	m_cameraOffsetThirdPerson = offset;
 }
 
 void CCameraControllerComponent::CameraZoom(const float& value)
@@ -308,6 +367,21 @@ void CCameraControllerComponent::UpdateInputs()
 
 	// Circle of life!
 	m_mousePitchDelta = m_mouseYawDelta = 0.0f;
+}
+
+void CCameraControllerComponent::SetFoV(float fov)
+{
+	m_newFieldOfView = fov;
+}
+
+void CCameraControllerComponent::SetRightOffsetTP(float val)
+{
+	m_newRightOffsetThirdPerson = val;
+}
+
+void CCameraControllerComponent::SetCameraDistanceTP(float val)
+{
+	m_newCameraDistanceThirdPerson = val;
 }
 
 
@@ -399,87 +473,68 @@ void CCameraControllerComponent::OnMouseWheel(int activationMode, float value)
 
 void CCameraControllerComponent::OnMouseButtonRight(int activationMode, float value)
 {
-	if (m_bIsFighting)
+	if (activationMode == eAAM_OnPress)
 	{
-		if (activationMode == eAAM_OnPress)
+		if (Schematyc::IObject* pSchematycObject = GetEntity()->GetSchematycObject())
 		{
-			m_saveCameraDistanceThirdPerson = m_newCameraDistanceThirdPerson;
-			m_newCameraDistanceThirdPerson = 2.0f;
-			m_newFieldOfView = m_fieldOfViewAiming;
-		}
-		if (activationMode == eAAM_OnRelease)
-		{
-			m_newCameraDistanceThirdPerson = m_saveCameraDistanceThirdPerson;
-			m_newCameraDistanceThirdPerson = 2.0f;
-			m_newFieldOfView = m_fieldOfViewExamine;
+			pSchematycObject->ProcessSignal(SPressSecondaryInteractSignal(), GetGUID());
 		}
 	}
-	else
+	if (activationMode == eAAM_OnRelease)
 	{
-		if (activationMode == eAAM_OnPress)
+		if (Schematyc::IObject* pSchematycObject = GetEntity()->GetSchematycObject())
 		{
-			m_saveCameraDistanceThirdPerson = m_newCameraDistanceThirdPerson;
-			m_newCameraDistanceThirdPerson = 2.0f;
-			m_newRightOffset = 0.6f;
-			m_newFieldOfView = m_fieldOfViewExamine;
-		}
-
-		if (activationMode == eAAM_OnRelease)
-		{
-			m_newCameraDistanceThirdPerson = m_saveCameraDistanceThirdPerson;
-			m_newRightOffset = 0.0f;
-			m_newFieldOfView = m_fieldOfViewDefault;
+			pSchematycObject->ProcessSignal(SReleaseSecondaryInteractSignal(), GetGUID());
 		}
 	}
-
 }
 
 void CCameraControllerComponent::OnTriggerXIRight(int activationMode, float value)
 {
-	if (m_bIsFighting)
+	if (value > 0)
 	{
-		if (value > 0)
+		if (Schematyc::IObject* pSchematycObject = GetEntity()->GetSchematycObject())
 		{
-			m_saveCameraDistanceThirdPerson = m_newCameraDistanceThirdPerson;
-			m_newCameraDistanceThirdPerson = 1.0f;
-		}
-		else
-		{
-			m_newCameraDistanceThirdPerson = m_saveCameraDistanceThirdPerson;
-			m_newCameraDistanceThirdPerson = 2.0f;
+			pSchematycObject->ProcessSignal(SPressSecondaryInteractSignal(), GetGUID());
 		}
 	}
 	else
 	{
-		if (value > 0)
+		if (Schematyc::IObject* pSchematycObject = GetEntity()->GetSchematycObject())
 		{
-			m_saveCameraDistanceThirdPerson = m_newCameraDistanceThirdPerson;
-			m_newCameraDistanceThirdPerson = 2.0f;
-			m_newRightOffset = 0.6f;
-			m_newFieldOfView = m_fieldOfViewExamine;
-		}
-		else
-		{
-			m_newCameraDistanceThirdPerson = m_saveCameraDistanceThirdPerson;
-			m_newRightOffset = 0.0f;
-			m_newFieldOfView = m_fieldOfViewDefault;
+			pSchematycObject->ProcessSignal(SReleaseSecondaryInteractSignal(), GetGUID());
 		}
 	}
 }
 
 void CCameraControllerComponent::OnPawnStartFight()
 {
-	m_saveCameraDistanceThirdPerson = m_newCameraDistanceThirdPerson;
-	m_newCameraDistanceThirdPerson = 2.0f;
-	m_newRightOffset = 0.7f;
-	m_newFieldOfView = m_fieldOfViewExamine;
-	m_bIsFighting = true;
+	if (Schematyc::IObject* pSchematycObject = GetEntity()->GetSchematycObject())
+	{
+		pSchematycObject->ProcessSignal(SPawnStartFightSignal(), GetGUID());
+	}
 }
 
 void CCameraControllerComponent::OnPawnReleaseFight()
 {
-	m_newCameraDistanceThirdPerson = m_saveCameraDistanceThirdPerson;
-	m_newRightOffset = 0.0f;
-	m_newFieldOfView = m_fieldOfViewDefault;
-	m_bIsFighting = false;
+	if (Schematyc::IObject* pSchematycObject = GetEntity()->GetSchematycObject())
+	{
+		pSchematycObject->ProcessSignal(SPawnReleaseFightSignal(), GetGUID());
+	}
+}
+
+void CCameraControllerComponent::OnPawnSetDriving()
+{
+	if (Schematyc::IObject* pSchematycObject = GetEntity()->GetSchematycObject())
+	{
+		pSchematycObject->ProcessSignal(SPawnSetDrivingSignal(), GetGUID());
+	}
+}
+
+void CCameraControllerComponent::OnPawnReleaseDriving()
+{
+	if (Schematyc::IObject* pSchematycObject = GetEntity()->GetSchematycObject())
+	{
+		pSchematycObject->ProcessSignal(SPawnReleaseDrivingSignal(), GetGUID());
+	}
 }

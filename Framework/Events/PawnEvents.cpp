@@ -24,6 +24,12 @@ namespace GameEvents
 		case GameEvents::EPawnEvent::Pawn_ReleaseFight:
 			ObserverManager::notify(&IPawnEvents::OnPawnReleaseFight);
 			break;
+		case GameEvents::EPawnEvent::Pawn_SetDriving:
+			ObserverManager::notify(&IPawnEvents::OnPawnSetDriving);
+			break;
+		case GameEvents::EPawnEvent::Pawn_ReleaseDriving:
+			ObserverManager::notify(&IPawnEvents::OnPawnReleaseDriving);
+			break;
 		default:
 			break;
 		}

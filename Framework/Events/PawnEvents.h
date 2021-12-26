@@ -13,7 +13,9 @@ namespace GameEvents
 		Assistant_SetTarget = BIT(1),
 		Assistant_ReleaseSelectTarget = BIT(2),
 		Pawn_StartFight = BIT(3),
-		Pawn_ReleaseFight = BIT(4)
+		Pawn_ReleaseFight = BIT(4),
+		Pawn_SetDriving = BIT(5),
+		Pawn_ReleaseDriving = BIT(6)
 	};
 
 	struct IPawnEvents : public BaseObserverProtocol
@@ -38,6 +40,14 @@ namespace GameEvents
 		/// Выход из режима боя
 		/// </summary>
 		virtual void OnPawnReleaseFight() {}
+		/// <summary>
+		/// Начать управление транспортом
+		/// </summary>
+		virtual void OnPawnSetDriving() {}
+		/// <summary>
+		/// Выйти из транспорта
+		/// </summary>
+		virtual void OnPawnReleaseDriving() {}
 	};
 
 	class CPawnEvents final
