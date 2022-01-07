@@ -10,6 +10,7 @@
 #include <CryGame/GameUtils.h>
 #include "Framework/PlayerController.h"
 #include "Alex.h"
+#include <CryGame/GameUtils.h>
 
 static void RegisterCarPlayer(Schematyc::IEnvRegistrar& registrar)
 {
@@ -28,14 +29,7 @@ CCarPlayer::~CCarPlayer()
 
 void CCarPlayer::Initialize()
 {
-	m_pVehiclePhysics = m_pEntity->GetComponent<Cry::DefaultComponents::CVehiclePhysicsComponent>();
-	m_pAnimationComponent = m_pEntity->GetComponent<Cry::DefaultComponents::CAdvancedAnimationComponent>();
-
-	m_pEntity->GetAllComponents<Cry::DefaultComponents::CWheelComponent>(m_pWheelsComponents);
-
-	InitializeWheels();
-
-	CryCreateClassInstanceForInterface(cryiidof<IAnimationOperatorQueue>(), m_poseWheelsModifier);
+	m_pVehicleController = GetEntity()->GetOrCreateComponent<CVehicleController>();
 }
 
 IEntityComponent::ComponentEventPriority CCarPlayer::GetEventPriority() const
@@ -61,12 +55,10 @@ void CCarPlayer::ProcessEvent(const SEntityEvent& event)
 		//const uint8 a = Camera.IsAABBVisible_FH(aabb);
 		//CryLog(string().Format("%i", a).c_str());
 
-		UpdateWheels();
-
-		if (m_bNeutral)
+		if (m_pVehicleController && m_bNeutral)
 		{
-			Vec3 vel = Vec3::CreateLerp(m_pVehiclePhysics->GetVelocity(), ZERO, gEnv->pTimer->GetFrameTime());
-			m_pVehiclePhysics->SetVelocity(vel);
+			Vec3 vel = Vec3::CreateLerp(m_pVehicleController->GetVelocity(), ZERO, gEnv->pTimer->GetFrameTime());
+			m_pVehicleController->SetVelocity(vel);
 		}
 
 		//IPersistantDebug* debug = gEnv->pGameFramework->GetIPersistantDebug();
@@ -125,131 +117,21 @@ void CCarPlayer::ReleaseDriver()
 	m_pCarDriverEntity = nullptr;
 }
 
-void CCarPlayer::InitializeWheels()
-{
-	for (Cry::DefaultComponents::CWheelComponent* wheel : m_pWheelsComponents)
-	{
-		if (ICharacterInstance* pCharacter = m_pAnimationComponent->GetCharacter())
-		{
-			if (wheel->m_axleIndex == 0)
-			{
-				if (IAttachment* pAttachment = pCharacter->GetIAttachmentManager()->GetInterfaceByName("Wheel_ForwardL"))
-				{
-					const QuatT rel = pAttachment->GetAttAbsoluteDefault();
-					Matrix34 mat = Matrix34(rel);
-					wheel->SetTransformMatrix(mat);
-				}
-			}
-			if (wheel->m_axleIndex == 1)
-			{
-				if (IAttachment* pAttachment = pCharacter->GetIAttachmentManager()->GetInterfaceByName("Wheel_ForwardR"))
-				{
-					const QuatT rel = pAttachment->GetAttAbsoluteDefault();
-					Matrix34 mat = Matrix34(rel);
-					wheel->SetTransformMatrix(mat);
-				}
-			}
-			if (wheel->m_axleIndex == 2)
-			{
-				if (IAttachment* pAttachment = pCharacter->GetIAttachmentManager()->GetInterfaceByName("Wheel_BackL"))
-				{
-					const QuatT rel = pAttachment->GetAttAbsoluteDefault();
-					Matrix34 mat = Matrix34(rel);
-					wheel->SetTransformMatrix(mat);
-				}
-			}
-			if (wheel->m_axleIndex == 3)
-			{
-				if (IAttachment* pAttachment = pCharacter->GetIAttachmentManager()->GetInterfaceByName("Wheel_BackR"))
-				{
-					const QuatT rel = pAttachment->GetAttAbsoluteDefault();
-					Matrix34 mat = Matrix34(rel);
-					wheel->SetTransformMatrix(mat);
-				}
-			}
-		}
-
-	}
-}
-
-void CCarPlayer::UpdateWheels()
-{
-	if (ICharacterInstance* pCharacterInstance = m_pAnimationComponent->GetCharacter())
-	{
-		pCharacterInstance->GetISkeletonAnim()->PushPoseModifier(2, m_poseWheelsModifier, "Pose Wheels");
-
-		ISkeletonPose* pSkeleton = pCharacterInstance->GetISkeletonPose();
-		IDefaultSkeleton& rIDefaultSkeleton = pCharacterInstance->GetIDefaultSkeleton();
-
-		int m_wheelForwardLeftBoneId = rIDefaultSkeleton.GetJointIDByName("Wheel_ForwardLeft");
-		int m_wheelForwardRightBoneId = rIDefaultSkeleton.GetJointIDByName("Wheel_ForwardRight");
-		int m_wheelBackLeftBoneId = rIDefaultSkeleton.GetJointIDByName("Wheel_BackLeft");
-		int m_wheelBackRightBoneId = rIDefaultSkeleton.GetJointIDByName("Wheel_BackRight");
-
-		QuatT relForwardLeft = pSkeleton->GetAbsJointByID(m_wheelForwardLeftBoneId);
-		QuatT relForwardRight = pSkeleton->GetAbsJointByID(m_wheelForwardRightBoneId);
-		QuatT relBackLeft = pSkeleton->GetAbsJointByID(m_wheelBackLeftBoneId);
-		QuatT relBackRight = pSkeleton->GetAbsJointByID(m_wheelBackRightBoneId);
-
-		for (Cry::DefaultComponents::CWheelComponent* wheel : m_pWheelsComponents)
-		{
-			pe_status_wheel sw;
-			pe_status_pos sp;
-			sw.partid = m_pEntity->GetPhysicalEntityPartId0(wheel->GetEntitySlotId());
-			sp.partid = m_pEntity->GetPhysicalEntityPartId0(wheel->GetEntitySlotId());
-
-			m_pEntity->GetPhysicalEntity()->GetStatus(&sw);
-			m_pEntity->GetPhysicalEntity()->GetStatus(&sp);
-
-			if (wheel->m_axleIndex == 0)
-			{
-				relForwardLeft.q = sp.q;
-				relForwardLeft.t = sp.pos;
-			}
-			if (wheel->m_axleIndex == 1)
-			{
-				relForwardRight.q = sp.q;
-				relForwardRight.t = sp.pos;
-			}
-			if (wheel->m_axleIndex == 2)
-			{
-				relBackLeft.q = sp.q;
-				relBackLeft.t = sp.pos;
-			}
-			if (wheel->m_axleIndex == 3)
-			{
-				relBackRight.q = sp.q;
-				relBackRight.t = sp.pos;
-			}
-		}
-
-		m_poseWheelsModifier->PushOrientation(m_wheelForwardLeftBoneId, IAnimationOperatorQueue::eOp_OverrideWorld, relForwardLeft.q);
-		m_poseWheelsModifier->PushOrientation(m_wheelForwardRightBoneId, IAnimationOperatorQueue::eOp_OverrideWorld, relForwardRight.q);
-		m_poseWheelsModifier->PushOrientation(m_wheelBackLeftBoneId, IAnimationOperatorQueue::eOp_OverrideWorld, relBackLeft.q);
-		m_poseWheelsModifier->PushOrientation(m_wheelBackRightBoneId, IAnimationOperatorQueue::eOp_OverrideWorld, relBackRight.q);
-
-		m_poseWheelsModifier->PushPosition(m_wheelForwardLeftBoneId, IAnimationOperatorQueue::eOp_OverrideWorld, relForwardLeft.t);
-		m_poseWheelsModifier->PushPosition(m_wheelForwardRightBoneId, IAnimationOperatorQueue::eOp_OverrideWorld, relForwardRight.t);
-		m_poseWheelsModifier->PushPosition(m_wheelBackLeftBoneId, IAnimationOperatorQueue::eOp_OverrideWorld, relBackLeft.t);
-		m_poseWheelsModifier->PushPosition(m_wheelBackRightBoneId, IAnimationOperatorQueue::eOp_OverrideWorld, relBackRight.t);
-	}
-}
-
 void CCarPlayer::OnForward(int activationMode, float value)
 {
 	if (activationMode == eAAM_OnPress)
 	{
-		if (m_pVehiclePhysics)
+		if (m_pVehicleController)
 		{
-			m_pVehiclePhysics->SetThrottle(1.0f);
+			m_pVehicleController->SetThrottle(1.0f);
 			m_bNeutral = false;
 		}
 	}
 	if (activationMode == eAAM_OnRelease)
 	{
-		if (m_pVehiclePhysics)
+		if (m_pVehicleController)
 		{
-			m_pVehiclePhysics->SetThrottle(0.0f);
+			m_pVehicleController->SetThrottle(0.0f);
 			m_bNeutral = true;
 		}
 	}
@@ -259,18 +141,18 @@ void CCarPlayer::OnBackward(int activationMode, float value)
 {
 	if (activationMode == eAAM_OnPress)
 	{
-		if (m_pVehiclePhysics)
+		if (m_pVehicleController)
 		{
-			m_pVehiclePhysics->SetCurrentGear(1);
-			m_pVehiclePhysics->SetBrake(1.0f);
+			m_pVehicleController->SetCurrentGear(1);
+			m_pVehicleController->SetBrake(1.0f);
 			m_bNeutral = false;
 		}
 	}
 	if (activationMode == eAAM_OnRelease)
 	{
-		if (m_pVehiclePhysics)
+		if (m_pVehicleController)
 		{
-			m_pVehiclePhysics->SetThrottle(0.0f);
+			m_pVehicleController->SetThrottle(0.0f);
 			m_bNeutral = true;
 		}
 	}
@@ -280,18 +162,17 @@ void CCarPlayer::OnLeft(int activationMode, float value)
 {
 	if (activationMode == eAAM_OnPress)
 	{
-		if (m_pVehiclePhysics)
+		if (m_pVehicleController)
 		{
-			CryTransform::CAngle angle = CryTransform::CAngle::FromDegrees(-value * 30.0f);
-			m_pVehiclePhysics->SetSteeringAngle(angle);
+			float angle = -value * 40.0f;
+			m_pVehicleController->SetSteeringAngle(angle);
 		}
 	}
 	if (activationMode == eAAM_OnRelease)
 	{
-		if (m_pVehiclePhysics)
+		if (m_pVehicleController)
 		{
-			CryTransform::CAngle angle = CryTransform::CAngle::FromDegrees(0);
-			m_pVehiclePhysics->SetSteeringAngle(angle);
+			m_pVehicleController->SetSteeringAngle(0);
 		}
 	}
 }
@@ -300,28 +181,27 @@ void CCarPlayer::OnRight(int activationMode, float value)
 {
 	if (activationMode == eAAM_OnPress)
 	{
-		if (m_pVehiclePhysics)
+		if (m_pVehicleController)
 		{
-			CryTransform::CAngle angle = CryTransform::CAngle::FromDegrees(value * 30.0f);
-			m_pVehiclePhysics->SetSteeringAngle(angle);
+			float angle = value * 40.0f;
+			m_pVehicleController->SetSteeringAngle(angle);
 		}
 	}
 	if (activationMode == eAAM_OnRelease)
 	{
-		if (m_pVehiclePhysics)
+		if (m_pVehicleController)
 		{
-			CryTransform::CAngle angle = CryTransform::CAngle::FromDegrees(0);
-			m_pVehiclePhysics->SetSteeringAngle(angle);
+			m_pVehicleController->SetSteeringAngle(0);
 		}
 	}
 }
 
 void CCarPlayer::OnYawDeltaXILeft(int activationMode, float value)
 {
-	if (m_pVehiclePhysics)
+	if (m_pVehicleController)
 	{
-		CryTransform::CAngle angle = CryTransform::CAngle::FromDegrees(value * 30.0f);
-		m_pVehiclePhysics->SetSteeringAngle(angle);
+		float angle = value * 40.0f;
+		m_pVehicleController->SetSteeringAngle(angle);
 	}
 }
 
@@ -355,16 +235,16 @@ void CCarPlayer::OnEnter(int activationMode, float value)
 
 void CCarPlayer::OnTriggerXIRight(int activationMode, float value)
 {
-	if (m_pVehiclePhysics)
+	if (m_pVehicleController)
 	{
 		if (value > 0.0f)
 		{
-			m_pVehiclePhysics->SetThrottle(value);
+			m_pVehicleController->SetThrottle(value);
 			m_bNeutral = false;
 		}
 		else
 		{
-			m_pVehiclePhysics->SetThrottle(0.0f);
+			m_pVehicleController->SetThrottle(0.0f);
 			m_bNeutral = true;
 		}
 	}

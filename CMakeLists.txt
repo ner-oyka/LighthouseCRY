@@ -100,11 +100,13 @@ add_sources("Framework_uber.cpp"
         "Framework/CameraController.cpp"
 		"Framework/PlayerInput.cpp"
 		"Framework/UIManager.cpp"
+		"Framework/VehicleController.cpp"
 		"Framework/IPawn.h"
 		"Framework/PlayerController.h"
         "Framework/CameraController.h"
 		"Framework/PlayerInput.h"
 		"Framework/UIManager.h"
+		"Framework/VehicleController.h"
 )
 
 add_sources("Events_uber.cpp"

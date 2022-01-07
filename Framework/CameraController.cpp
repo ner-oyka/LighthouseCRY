@@ -202,7 +202,7 @@ void CCameraControllerComponent::UpdateVehicle()
 	Quat quatTargetRotation = Quat::CreateSlerp(m_quatLastTargetRotation, quatTargetRotationGoal, gEnv->pTimer->GetFrameTime() * 7.0f);
 	m_quatLastTargetRotation = quatTargetRotation;
 
-	Vec3 vecViewPosition = vecTargetAimPosition + (quatTargetRotation * (FORWARD_DIRECTION * 7.0f));
+	Vec3 vecViewPosition = vecTargetAimPosition + (quatTargetRotation * (FORWARD_DIRECTION * m_newCameraDistanceVehicle));
 
 	Quat quatViewRotationGoal = Quat::CreateRotationVDir((vecTargetAimPosition - vecViewPosition).GetNormalizedSafe());
 	Quat quatViewRotation = Quat::CreateSlerp(m_quatLastViewRotation, quatViewRotationGoal, gEnv->pTimer->GetFrameTime() * 50.f);
@@ -225,9 +225,9 @@ void CCameraControllerComponent::UpdateThirdPerson()
 		Vec3 playerPos = playerEntity->GetWorldPos();
 		Matrix34 m_cameraMatrix;
 
-		m_viewPitch += (GetMousePitchDelta() + GetXiPitchDelta()) * 4.f;
+		m_viewPitch += GetMousePitchDelta() * m_mousePitchSensivity + GetXiPitchDelta() * m_xiPitchSensivity;
 		m_viewPitch = clamp_tpl(m_viewPitch, DEG2RAD(m_pitchMinThirdPerson * -1.0f), DEG2RAD(m_pitchMaxThirdPerson));
-		m_viewYaw += (GetMouseYawDelta() - GetXiYawDelta()) * 4.f;
+		m_viewYaw += GetMouseYawDelta() * m_mouseYawSensivity - GetXiYawDelta() * m_xiYawSensivity;
 
 		if (m_viewYaw > gf_PI)
 			m_viewYaw -= gf_PI2;
@@ -244,7 +244,7 @@ void CCameraControllerComponent::UpdateThirdPerson()
 		Vec3 vecTargetAimPosition = playerPos + Vec3(0.f, 0.f, 1.55f) + rightOffset;
 
 		Quat quatTargetRotationGoal = m_quatTargetRotation * quatPreTransYP;
-		Quat quatTargetRotation = Quat::CreateSlerp(m_quatLastTargetRotation, quatTargetRotationGoal, gEnv->pTimer->GetFrameTime() * 7.0f);
+		Quat quatTargetRotation = Quat::CreateSlerp(m_quatLastTargetRotation, quatTargetRotationGoal, gEnv->pTimer->GetFrameTime() * 15.0f);
 		m_quatLastTargetRotation = quatTargetRotation;
 
 		Interpolate(m_cameraDistanceThirdPerson, m_newCameraDistanceThirdPerson, 6, gEnv->pTimer->GetFrameTime());
@@ -348,22 +348,13 @@ bool CCameraControllerComponent::CollisionDetection(const Vec3& TargetPosition, 
 // Input methods
 void CCameraControllerComponent::UpdateInputs()
 {
-	static float frameTime = gEnv->pTimer->GetFrameTime();
-
-	// We can just add up all the acculmated requests to find out how much pitch / yaw is being requested.
-	// It's also a good time to filter out any small movement requests to stabilise the camera / etc.
 	m_lastPitchDelta = m_mousePitchDelta + m_xiPitchDelta;
-	if (std::abs(m_lastPitchDelta) < m_pitchFilter)
-		m_lastPitchDelta = 0.0f;
 	m_lastYawDelta = m_mouseYawDelta + m_xiYawDelta;
-	if (std::abs(m_lastYawDelta) < m_yawFilter)
-		m_lastYawDelta = 0.0f;
 
-	// Track the last values for mouse and xbox inputs. They're filtered individually for low level noise.
-	m_lastMousePitchDelta = std::abs(m_mousePitchDelta) >= m_pitchFilter ? m_mousePitchDelta : 0.0f;
-	m_lastMouseYawDelta = std::abs(m_mouseYawDelta) >= m_yawFilter ? m_mouseYawDelta : 0.0f;
-	m_lastXiPitchDelta = std::abs(m_xiPitchDelta) >= m_pitchFilter ? m_xiPitchDelta : 0.0f;
-	m_lastXiYawDelta = std::abs(m_xiYawDelta) >= m_yawFilter ? m_xiYawDelta : 0.0f;
+	m_lastMousePitchDelta = m_mousePitchDelta;
+	m_lastMouseYawDelta = m_mouseYawDelta;
+	m_lastXiPitchDelta = m_xiPitchDelta;
+	m_lastXiYawDelta = m_xiYawDelta;
 
 	// Circle of life!
 	m_mousePitchDelta = m_mouseYawDelta = 0.0f;
@@ -447,22 +438,18 @@ void CCameraControllerComponent::OnMouseY(int activationMode, float value)
 
 void CCameraControllerComponent::OnYawDeltaXIRight(int activationMode, float value)
 {
+	value = crymath::abs(value) * (crymath::abs(value) * value);
 	float radians = DEG2RAD(value);
 
-	if (std::abs(radians) < m_xiYawFilter)
-		m_xiYawDelta = 0.0f;
-	else
-		m_xiYawDelta = radians;
+	m_xiYawDelta = radians;
 }
 
 void CCameraControllerComponent::OnPitchDeltaXIRight(int activationMode, float value)
 {
+	value = crymath::abs(value) * (crymath::abs(value) * value);
 	float radians = DEG2RAD(value * -1.0f);
 
-	if (std::abs(radians) < m_xiPitchFilter)
-		m_xiPitchDelta = 0.0f;
-	else
-		m_xiPitchDelta = radians;
+	m_xiPitchDelta = radians;
 }
 
 void CCameraControllerComponent::OnMouseWheel(int activationMode, float value)
@@ -490,6 +477,11 @@ void CCameraControllerComponent::OnMouseButtonRight(int activationMode, float va
 }
 
 void CCameraControllerComponent::OnTriggerXIRight(int activationMode, float value)
+{
+
+}
+
+void CCameraControllerComponent::OnTriggerXILeft(int activationMode, float value)
 {
 	if (value > 0)
 	{

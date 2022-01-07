@@ -774,6 +774,18 @@ void CAlexPlayer::OnOne(int activationMode, float value)
 	}
 }
 
+void CAlexPlayer::OnD_PadXIUp(int activationMode, float value)
+{
+	if (activationMode == eAAM_OnPress)
+	{
+		if (!m_isResearchTargeting)
+		{
+			m_isFight = !m_isFight;
+			SetFight(m_isFight);
+		}
+	}
+}
+
 void CAlexPlayer::SetFight(bool value)
 {
 	if (value)
@@ -804,6 +816,39 @@ void CAlexPlayer::OnMouseButtonRight(int activationMode, float value)
 			GameEvents::CPawnEvents::Get()->SendEvent(GameEvents::EPawnEvent::Assistant_StartSelectTarget);
 		}
 		if (activationMode == eAAM_OnRelease)
+		{
+			SendSchematycSignal(SStopResearchTargetingSignal());
+			m_isResearchTargeting = false;
+			//RemoveCursorEntity();
+			GameEvents::CPawnEvents::Get()->SendEvent(GameEvents::EPawnEvent::Assistant_ReleaseSelectTarget);
+		}
+	}
+}
+
+void CAlexPlayer::OnTriggerXIRight(int activationMode, float value)
+{
+	if (value > 0)
+	{
+		SendSchematycSignal(SStartFire());
+	}
+	else
+	{
+		SendSchematycSignal(SStopFire());
+	}
+}
+
+void CAlexPlayer::OnTriggerXILeft(int activationMode, float value)
+{
+	if (m_isFight == false)
+	{
+		if (value > 0.0f)
+		{
+			SendSchematycSignal(SStartResearchTargetingSignal());
+			m_isResearchTargeting = true;
+			//SpawnCursorEntity();
+			GameEvents::CPawnEvents::Get()->SendEvent(GameEvents::EPawnEvent::Assistant_StartSelectTarget);
+		}
+		else
 		{
 			SendSchematycSignal(SStopResearchTargetingSignal());
 			m_isResearchTargeting = false;
@@ -862,24 +907,6 @@ void CAlexPlayer::OnXI_A(int activationMode, float value)
 			SpawnMeshTargetForAssistant();
 			CPlayerController::Get()->GetAssistant()->GetComponent<CAssistantComponent>()->SendEventBehaviorTree("MoveToSearchLocation");
 		}
-	}
-}
-
-void CAlexPlayer::OnTriggerXIRight(int activationMode, float value)
-{
-	if (value > 0 && m_isResearchTargeting == false)
-	{
-		SendSchematycSignal(SStartResearchTargetingSignal());
-		m_isResearchTargeting = true;
-		//SpawnCursorEntity();
-		GameEvents::CPawnEvents::Get()->SendEvent(GameEvents::EPawnEvent::Assistant_StartSelectTarget);
-	}
-	else if (value == 0)
-	{
-		SendSchematycSignal(SStopResearchTargetingSignal());
-		m_isResearchTargeting = false;
-		//RemoveCursorEntity();
-		GameEvents::CPawnEvents::Get()->SendEvent(GameEvents::EPawnEvent::Assistant_ReleaseSelectTarget);
 	}
 }
 

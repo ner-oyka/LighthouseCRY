@@ -239,7 +239,15 @@ private:
 	//Inputs
 	int m_mouseInvertPitch{ 0 };
 
-	float m_mousePitchYawSensitivity{ 1.0f };
+	//sensivity
+	float m_mousePitchYawSensitivity = 1.0f;
+
+	float m_mousePitchSensivity = 1.6f;
+	float m_mouseYawSensivity = 2.7f;
+
+	float m_xiPitchSensivity = 1.6f;
+	float m_xiYawSensivity = 2.7f;
+	//~sensivity
 
 	float m_lastPitchDelta{ 0.0f };
 
@@ -257,14 +265,6 @@ private:
 	float m_xiYawDelta{ 0.0f };
 	float m_lastXiYawDelta{ 0.0f };
 
-	float m_pitchFilter{ 0.0001f };
-
-	float m_yawFilter{ 0.0001f };
-
-	float m_xiPitchFilter{ 0.0001f };
-
-	float m_xiYawFilter{ 0.0001f };
-
 private:
 	//IInputEvents
 	virtual void OnMouseX(int activationMode, float value) override;
@@ -277,6 +277,7 @@ private:
 
 	virtual void OnMouseButtonRight(int activationMode, float value) override;
 	virtual void OnTriggerXIRight(int activationMode, float value) override;
+	virtual void OnTriggerXILeft(int activationMode, float value) override;
 	//~IInputEvents
 
 	//IPawnEvents

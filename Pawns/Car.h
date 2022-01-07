@@ -7,6 +7,7 @@
 #include <DefaultComponents/Geometry/AdvancedAnimationComponent.h>
 
 #include "Framework/IPawn.h"
+#include "Framework/VehicleController.h"
 
 class CCarPlayer final : public IPawn
 {
@@ -39,10 +40,6 @@ public:
 	void ReleaseDriver();
 
 private:
-	void InitializeWheels();
-	void UpdateWheels();
-
-private:
 	//IInputEvents
 	virtual void OnForward(int activationMode, float value) override;
 	virtual void OnBackward(int activationMode, float value) override;
@@ -63,15 +60,8 @@ private:
 	//~IInputEvents
 
 private:
-	Cry::DefaultComponents::CVehiclePhysicsComponent* m_pVehiclePhysics = nullptr;
-	Cry::DefaultComponents::CAdvancedAnimationComponent* m_pAnimationComponent = nullptr;
-
+	CVehicleController* m_pVehicleController;
 	IEntity* m_pCarDriverEntity = nullptr;
-
-	DynArray<Cry::DefaultComponents::CWheelComponent*> m_pWheelsComponents;
-
-	//Animate wheels
-	IAnimationOperatorQueuePtr m_poseWheelsModifier;
 
 	bool m_bNeutral = false;
 };

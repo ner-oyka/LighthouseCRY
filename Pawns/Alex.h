@@ -213,8 +213,11 @@ private:
 
 	virtual void OnXI_A(int activationMode, float value) override;
 	virtual void OnTriggerXIRight(int activationMode, float value) override;
+	virtual void OnTriggerXILeft(int activationMode, float value) override;
 
 	virtual void OnF(int activationMode, float value) override;
 
 	virtual void OnOne(int activationMode, float value) override;
+
+	virtual void OnD_PadXIUp(int activationMode, float value) override;
 };
